@@ -9,22 +9,31 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+```{r}
+#load personality data
+Personality_2008 <- read_dta("RawData/Personality/Personality_2008.dta")
+View(Personality_2008)
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+#create Rosenberg_index 
+self_esteem2008$nomem_encr <- Personality_2008$nomem_encr
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+if (exists(self_esteem2008$Rosenberg)) {
+      attach(Personality_2008)
+      temp_pos <- cp08a070 cp08a071 cp08a073 cp08a075 cp08a076
+      
+      cp08a072
+      cp08a074
+      cp08a077
+      cp08a078
+      cp08a079
+      
+      
+} else {
+  warning("Index already exists")
+}
 
-```{r cars}
-summary(cars)
+
+
+
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
