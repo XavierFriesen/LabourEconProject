@@ -9,31 +9,36 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+#calculating Rosenberg index for trait self-esteem + adding dummy
+```{r, warning=FALSE}
 #load personality data
 Personality_2008 <- read_dta("RawData/Personality/Personality_2008.dta")
 View(Personality_2008)
 
 #create Rosenberg_index 
+self_esteem2008 <- data.frame(matrix(ncol = 0, nrow = nrow(Personality_2008)))
 self_esteem2008$nomem_encr <- Personality_2008$nomem_encr
 
-if (exists(self_esteem2008$Rosenberg)) {
+if (!"rosenberg_2008" %in% names(self_esteem2008)) {
       attach(Personality_2008)
-      temp_pos <- cp08a070 cp08a071 cp08a073 cp08a075 cp08a076
-      
-      cp08a072
-      cp08a074
-      cp08a077
-      cp08a078
-      cp08a079
-      
-      
+      temp_pos <- cp08a070 + cp08a071 + cp08a073 + cp08a075 + cp08a076 #positively phrased question
+      temp_neg <- abs(cp08a072 - 8) + abs(cp08a074 - 8) +abs(cp08a077 - 8) + abs(cp08a078 - 8) + abs(cp08a079 - 8) #negatively phrased question
+      self_esteem2008$rosenberg_2008 = temp_pos + temp_neg #adding up
+      remove(temp_pos, temp_neg)
+      detach()
 } else {
   warning("Index already exists")
 }
 
+#create dummy: if less than or equal to 45 = 0 (low self-esteem), if more than or equal to 45 = 1 (high self-esteem)
 
+self_esteem2008$dum_se_2008 = ifelse(self_esteem2008$rosenberg_2008 > 45, 1, 0)
 
+```
 
+#quick explanatory analysis of Rosenberg scores
+```{r}
+hist(self_esteem2008$rosenberg_2008, breaks = 49)
+table(self_esteem2008$dum_se_2008)
 ```
 
