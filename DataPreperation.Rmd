@@ -175,7 +175,6 @@ proportions(table(self_esteem$dum_45))
 
 ##1.5. Cleaning up and Saving Data
 ```{r} 
-remove(temp_df, personality_data, file_name, suffix, suffixes, temp_neg, temp_pos, year, id, individuals, rosenberg_2015, row, rows_to_update, individual_avg, self_esteem_2016, individual_variation)
 
 # Define the file path
 file_path <- "ProcessedData/self_esteem_final.csv"
@@ -191,5 +190,152 @@ write.csv(self_esteem, file_path, row.names = FALSE)
 # Print a message to confirm saving
 print(paste("File saved as", file_path))
 
+remove(temp_df, personality_data, file_name, suffix, suffixes, temp_neg, temp_pos, year, id, individuals, rosenberg_2015, row, rows_to_update, individual_avg, self_esteem_2016, individual_variation, file_path)
+
+```
+
+#2. Lay-off Dummies
+#2.1. Designing dummy for working vs. not working: 
+
+Using criteria of Van der Meer & Wielers (2016): 
+
+"We differentiate between employed and unemployed. The employment status is captured in 
+the background variables of the study. Everyone in paid employment is employed, (belbezig = 1), everyone searching for a job is unemployed (belbezig = 4, 5 and 6). We do not have a reliable measure of the duration of unemployment. This is not asked in the questionnaire and is very difficult to construct. We can only see if respondents were unemployed in consecutive waves. We will miss a period of in between employment, but also a period of in between unemployment if one indicates to be employed in two consecutive waves."
+
+empo: 
+We also consider people working in the family business (belbezig = 2), and freelancers/independent contractors (belbezig = 3) as employed
+
+For our survival analysis, considering we will be looking at lay-offs, we also include belbezig = 5 as 'employed', as these are first time job-seekers, since they have never been laid-of. The same for belbezig = 7 for 'students'
+
+Unemployed
+belbezig = 4, 6
+
+
+Censoring: 
+People that went with (early) retirement or lost their job due to a disablity are NA, and thus drop-out of the survival analysis. '
+
+As we exclude people that are too young to have job, belbezig = 14.
+
+
+Dummy = 1 if employed, 0 = if unemployed
+
+
+```{r}
+# Initialize an empty dataframe for the combined results
+employment <- data.frame()
+
+# Loop through each year from 2008 to 2022
+for (year in 2008:2022) {
+    # Construct the file name based on the year
+    file_name <- paste0("RawData/Background Variables/bg_", year, ".dta")
+    
+    # Read the data
+    bg_data <- read_dta(file_name)
+    
+    # Create the emp_status column
+    # Employed (belbezig = 1, 2, 3), Unemployed (belbezig = 4, 5, 6)
+    bg_data$emp_status <- ifelse(bg_data$belbezig %in% c(1, 2, 3, 5, 7), 1,   ifelse(bg_data$belbezig %in% c(4, 6), 0, NA))
+    
+    # Create a temporary dataframe for the year
+    temp_df <- data.frame(
+        id = bg_data$nomem_encr,
+        emp_status = bg_data$emp_status,
+        year = year
+    )
+    
+    # Combine the temporary dataframe with the main dataframe
+    employment <- rbind(employment, temp_df)
+}
+
+# View the final combined dataframe
+View(employment)
+
+```
+
+## 2.2. Laid-off variable: 
+A person is considered laid off (employment$laid_off = 1) if at t = 1, emp_status = 1, and at t = 2, emp_status = 0 '
+
+
+```{r}
+# Sort the employment dataframe by id and year
+employment <- employment[order(employment$id, employment$year), ]
+
+# Initialize the laid_off column with NA
+employment$laid_off <- NA
+
+# Loop through the dataframe to identify layoffs
+for (i in 1:(nrow(employment) - 1)) {
+    if (employment$id[i] == employment$id[i + 1]) {
+        if (is.na(employment$emp_status[i]) || is.na(employment$emp_status[i + 1])) {
+            employment$laid_off[i] <- NA
+        } else if (employment$emp_status[i] == 1 && employment$emp_status[i + 1] == 0) {
+            employment$laid_off[i] <- 1
+        } else {
+            employment$laid_off[i] <- 0
+        }
+    }
+}
+
+# View the updated dataframe
+View(employment)
+```
+
+#2.3. Lay-offs, NA Corrected
+The above variables creates many na's
+so laid_off_na_corrected corrects if a person has a different job status (e.g. housewife, retirement etc)
+
+If both are NA, lay-off = 0 
+If t=0 is na, and t = 1 is 0 then lay-off = 1
+If t=0 is na, and t = 1 is 1 then lay-off = 0
+If t=0 is 1, and t=1 is NA then lay-off = 0
+If t=0 is 0, and t=1 is NA then lay-off = 0
+
+```{r}
+# Sort the employment dataframe by id and year
+employment <- employment[order(employment$id, employment$year), ]
+
+# Initialize the laid_off_na_corrected column with 0
+employment$laid_off_na_corrected <- 0
+
+# Loop through the dataframe to set laid_off_na_corrected
+for (i in 1:(nrow(employment) - 1)) {
+    if (employment$id[i] == employment$id[i + 1]) {
+        current_status <- employment$emp_status[i]
+        next_status <- employment$emp_status[i + 1]
+
+        # Check for NA in current and next status
+        if (is.na(current_status) || is.na(next_status)) {
+            if (is.na(current_status) && !is.na(next_status) && next_status == 0) {
+                employment$laid_off_na_corrected[i] <- 1
+            } else {
+                employment$laid_off_na_corrected[i] <- 0
+            }
+        } else {
+            # Apply conditions for non-NA values
+            employment$laid_off_na_corrected[i] <- ifelse(current_status == 1 && next_status == 0, 1, 0)
+        }
+    }
+}
+
+
+```
+
+##2.4. Save and clean 
+```{r}
+# Define the file path
+file_path <- "ProcessedData/employment_final.csv"
+
+# Check if the ProcessedData folder exists, create it if it doesn't
+if (!dir.exists("ProcessedData")) {
+  dir.create("ProcessedData")
+}
+
+# Save the self_esteem dataframe as a CSV file
+write.csv(employment, file_path, row.names = FALSE)
+
+# Print a message to confirm saving
+print(paste("File saved as", file_path))
+
+remove(bg_data, current_status, file_name, i, next_status, temp_df, year, file_path)
 ```
 
