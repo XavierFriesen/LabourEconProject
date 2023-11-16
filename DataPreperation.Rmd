@@ -80,26 +80,163 @@ hist(self_esteem$rosenberg[self_esteem$year==2015], breaks = 49)
 
 #total number of ID's in data-set
 length(unique(self_esteem$nomem_encr))
-
-#Number of ID's per year
 ```
+
+We also have random observations missing, if people did not respond to the survey
+So if in between the first time they submitted the personality survey, and the last time there is an observation missing, we will create a new observation with Rosenberg = NA. 
+
+```{r}
+#Check if there are persons who miss internal datasets
+
+# Unique identifiers
+unique_ids <- unique(self_esteem$nomem_encr)
+
+# Initialize a list to store individuals with internal missing years
+individuals_with_internal_missing_years <- list()
+
+# Loop through each individual
+for (id in unique_ids) {
+    # Extract the years present for the individual
+    individual_years <- self_esteem$year[self_esteem$nomem_encr == id]
+    
+    # Find the first and last year
+    first_year <- min(individual_years)
+    last_year <- max(individual_years)
+
+    # Generate the expected range of years for this individual
+    expected_years <- first_year:last_year
+
+    # Check for missing years within this range
+    missing_years <- setdiff(expected_years, individual_years)
+    
+    # If there are internal missing years, add them to the list
+    if (length(missing_years) > 0) {
+        individuals_with_internal_missing_years[[as.character(id)]] <- missing_years
+    }
+}
+
+# Check the result
+individuals_with_internal_missing_years
+
+# Loop through each individual with internal missing years
+for (id in names(individuals_with_internal_missing_years)) {
+    # Loop through each missing year for this individual
+    for (year in individuals_with_internal_missing_years[[id]]) {
+        # Create a new entry with the id, missing year, and NA for Rosenberg
+        new_entry <- data.frame(nomem_encr = as.numeric(id), year = year, rosenberg = NA)
+
+        # Append this new entry to the self_esteem dataframe
+        self_esteem <- rbind(self_esteem, new_entry)
+    }
+}
+
+# Optionally, sort the dataframe again
+self_esteem <- self_esteem[order(self_esteem$nomem_encr, self_esteem$year), ]
+
+remove(unique_ids, individuals_with_internal_missing_years,individual_years, first_year, last_year, expected_years, missing_years, id, year, new_entry)
+
+```
+
+Rechecking NA's 
+```{r}
+#count the number of NA-observations
+aggregate(is.na(rosenberg) ~ year, data = self_esteem, FUN = sum)
+
+
+library(dplyr)
+
+# Count the number of non-NA observations for Rosenberg per year
+self_esteem %>%
+  group_by(year) %>%
+  summarise(count = sum(!is.na(rosenberg)))
+
+# in %
+library(dplyr)
+
+# Count the number of NA observations per year
+na_count <- aggregate(is.na(rosenberg) ~ year, data = self_esteem, FUN = sum)
+names(na_count)[2] <- "na_count"
+
+# Count the total number of observations per year
+total_count <- self_esteem %>%
+  group_by(year) %>%
+  summarise(total = n())
+
+# Merge the two dataframes
+merged_counts <- merge(na_count, total_count, by = "year")
+
+# Calculate the percentage of NA observations
+merged_counts$na_percentage <- (merged_counts$na_count / merged_counts$total) * 100
+
+# View the result
+print(merged_counts)
+remove(na_count, total_count, merged_counts)
+
+```
+
+
+##1.3. Inputing Data
 
 We will now create a new variable: rosenberg_inp 
 - This variable is the same as rosenberg, unless rosenberg is NA 
-- If not: it will be take the last available score for Rosenberg for missing values in the years after the first participation in the personality survey 
+- If not: it will be take the last available score for Rosenberg for missing values in the years after the first participation in the personality survey.
+       - Last Observation Carried Forward Approach
 
-This however will not take care of: 
-1. Missing observations of years before the first participation in the personality survey
-            Due to reversed causality, we cannot use future values in the imputation 
-2. It will create Rosenberg scores, even if a person dropped out before that time. This will later have to be corrected. 
+```{r}
+library(zoo)
+
+# Assuming your dataframe is named self_esteem and has columns 'nomem_encr', 'year', and 'rosenberg'
+self_esteem$rosenberg_inp <- with(self_esteem, ave(rosenberg, nomem_encr, FUN = function(x) na.locf(x, na.rm = FALSE)))
+
+# View the updated dataframe
+head(self_esteem)
+
+```
+Rechecking NA's 
+Indeed much lower now, only if there are no previous data.
+```{r}
+# in %
+library(dplyr)
+
+# Count the number of NA observations per year
+na_count <- aggregate(is.na(rosenberg_inp) ~ year, data = self_esteem, FUN = sum)
+names(na_count)[2] <- "na_count"
+
+# Count the total number of observations per year
+total_count <- self_esteem %>%
+  group_by(year) %>%
+  summarise(total = n())
+
+# Merge the two dataframes
+merged_counts <- merge(na_count, total_count, by = "year")
+
+# Calculate the percentage of NA observations
+merged_counts$na_percentage <- (merged_counts$na_count / merged_counts$total) * 100
+
+# View the result
+print(merged_counts)
+remove(na_count, total_count, merged_counts)
+
+```
+
+##1.4. Creating dummies
+```{r}
+#dummy, coded 0 as below or equal to 35 (low SE) or 1 as higher than 35
+#or 0 if below or equal to 40 etc.
+self_esteem$dum_35_inp <- ifelse(self_esteem$rosenberg_inp <= 35, 0, 1)
+self_esteem$dum_40_inp <- ifelse(self_esteem$rosenberg_inp <= 40, 0, 1)
+self_esteem$dum_45_inp <- ifelse(self_esteem$rosenberg_inp <= 45, 0, 1)
 
 
+table(self_esteem$dum_35_inp)
+proportions(table(self_esteem$dum_35_inp))
 
+table(self_esteem$dum_40)
+proportions(table(self_esteem$dum_40_inp))
 
-
-
-
-
+table(self_esteem$dum_45)
+proportions(table(self_esteem$dum_45_inp))
+```
 
 
 ##1.5. Cleaning up and Saving Data
@@ -119,7 +256,7 @@ write.csv(self_esteem, file_path, row.names = FALSE)
 # Print a message to confirm saving
 print(paste("File saved as", file_path))
 
-remove(temp_df, personality_data, file_name, suffix, suffixes, temp_neg, temp_pos, year, id, individuals, rosenberg_2015, row, rows_to_update, individual_avg, self_esteem_2016, individual_variation, file_path, subset_2015)
+remove(temp_df, personality_data, file_name, suffix, suffixes, temp_neg, temp_pos, year, id, individuals, rosenberg_2015, row, rows_to_update, individual_avg, self_esteem_2016, individual_variation, file_path, subset_2015, individuals_with_missing_years, individuals_with_internal_missing_years)
 
 ```
 
@@ -267,7 +404,7 @@ print(paste("File saved as", file_path))
 remove(bg_data, current_status, file_name, i, next_status, temp_df, year, file_path)
 ```
 
-#3. Merge Employment and Self-Esteem and Inpute Missing Data 
+#3. Merge Employment and Self-Esteem 
 #3.1. Merge Employment and Self-Esteem 
 
 ```{r}
@@ -279,37 +416,51 @@ self_esteem <- rename(self_esteem, id = nomem_encr )
 df_no_cov <- merge(employment, self_esteem, by = c("id", "year"), all = T)
 
 # Count the number of observations where both Rosenberg and laid_off_na_corrected are available
-both_available <- sum(!is.na(df_no_cov$rosenberg) & !is.na(df_no_cov$laid_off_na_corrected))
+both_available <- sum(!is.na(df_no_cov$rosenberg_inp) & !is.na(df_no_cov$laid_off_na_corrected))
 
 # Count the number of observations where one of them is missing
-one_missing <- sum(is.na(df_no_cov$rosenberg) | is.na(df_no_cov$laid_off_na_corrected))
+one_missing <- sum(is.na(df_no_cov$rosenberg_inp) | is.na(df_no_cov$laid_off_na_corrected))
+
+# Count the number of observations where rosenberg of them is missing
+rosenberg_missing <- sum(is.na(df_no_cov$rosenberg_inp) & !is.na(df_no_cov$laid_off_na_corrected))
+
+laid_off_missing <- sum(!is.na(df_no_cov$rosenberg_inp) & is.na(df_no_cov$laid_off_na_corrected))
 
 # Print the results
 cat("Number of observations with both values available:", both_available, "\n")
 cat("Number of observations with one value missing:", one_missing, "\n")
+cat("Number of observations with Rosenberg only missing:", rosenberg_missing, "\n")
+cat("Number of observations with Laid-Off only missing:", laid_off_missing, "\n")
+
+remove(both_available, one_missing, rosenberg_missing, laid_off_missing)
+```
+
+So especially the number of observations with Rosenberg only missing is very high. These supposedly 74.090 observations of people that have never participated in the personality survey. We will exclude them from the analysis. 
+
+```{r}
+df_no_cov <- subset(df_no_cov, !is.na(rosenberg_inp))
 
 ```
 
-Clearly, many respondents have not filled in the personality survey every year. 
-When available, we will use the latest available score from Rosenberg as a substitute: 
+##3.3 Save data and clean
 
-##3.2. Inputing Rosenberg Scores
 ```{r}
-for (i in 2:nrow(df_no_cov)) {
-    # Check if the current row's rosenberg is NA
-    if (is.na(df_no_cov$rosenberg[i])) {
-        # Check if there are any previous non-NA rosenberg scores for this id
-        previous_rosenberg <- df_no_cov$rosenberg[1:(i-1)][df_no_cov$id[1:(i-1)] == df_no_cov$id[i]]
-        
-        if (any(!is.na(previous_rosenberg))) {
-            # Find the last known rosenberg score for this individual
-            last_known_index <- max(which(df_no_cov$id[1:(i-1)] == df_no_cov$id[i] & !is.na(df_no_cov$rosenberg[1:(i-1)])))
-            df_no_cov$rosenberg[i] <- df_no_cov$rosenberg[last_known_index]
-        }
-    }
+# Define the file path
+file_path <- "ProcessedData/df_no_cov_final.csv"
+
+# Check if the ProcessedData folder exists, create it if it doesn't
+if (!dir.exists("ProcessedData")) {
+  dir.create("ProcessedData")
 }
 
-# View the updated dataframe
-View(df_no_cov)
+# Save the self_esteem dataframe as a CSV file
+write.csv(df_no_cov, file_path, row.names = FALSE)
+
+# Print a message to confirm saving
+print(paste("File saved as", file_path))
+
+remove(file_path)
 ```
+
+
 
