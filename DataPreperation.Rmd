@@ -221,11 +221,19 @@ remove(na_count, total_count, merged_counts)
 
 ##1.4. Creating dummies
 ```{r}
+<<<<<<< HEAD
 #dummy, coded 1 as below or equal to 35 (low SE) or 0 as higher than 35
 #or 0 if below or equal to 45 etc.
 self_esteem$dum_35_inp <- ifelse(self_esteem$rosenberg_inp <= 35, 1, 0)
 self_esteem$dum_40_inp <- ifelse(self_esteem$rosenberg_inp <= 40, 1, 0)
 self_esteem$dum_45_inp <- ifelse(self_esteem$rosenberg_inp <= 45, 1, 0)
+=======
+#dummy, coded 0 as below or equal to 35 (low SE) or 1 as higher than 35
+#or 0 if below or equal to 40 etc.
+self_esteem$dum_35_inp <- ifelse(self_esteem$rosenberg_inp <= 35, 0, 1)
+self_esteem$dum_40_inp <- ifelse(self_esteem$rosenberg_inp <= 40, 0, 1)
+self_esteem$dum_45_inp <- ifelse(self_esteem$rosenberg_inp <= 45, 0, 1)
+>>>>>>> 45b34071e78a41a50c38fbec03117e6b2d5dcb5e
 
 
 table(self_esteem$dum_35_inp)
@@ -431,10 +439,22 @@ cat("Number of observations with both values available:", both_available, "\n")
 cat("Number of observations with one value missing:", one_missing, "\n")
 cat("Number of observations with Rosenberg only missing:", rosenberg_missing, "\n")
 cat("Number of observations with Laid-Off only missing:", laid_off_missing, "\n")
+<<<<<<< HEAD
+=======
 
 remove(both_available, one_missing, rosenberg_missing, laid_off_missing)
 ```
 
+So especially the number of observations with Rosenberg only missing is very high. These supposedly 74.090 observations of people that have never participated in the personality survey. We will exclude them from the analysis. 
+
+```{r}
+df_no_cov <- subset(df_no_cov, !is.na(rosenberg_inp))
+>>>>>>> 45b34071e78a41a50c38fbec03117e6b2d5dcb5e
+
+remove(both_available, one_missing, rosenberg_missing, laid_off_missing)
+```
+
+<<<<<<< HEAD
 So especially the number of observations with Rosenberg only missing is very high. These supposedly 74.090 observations of people that have never participated in the personality survey. We will exclude them from the analysis. 
 
 ```{r}
@@ -455,6 +475,11 @@ df_no_cov <- transform(df_no_cov, time = year - ave(year, id, FUN = min))
 ##3.4 Save data and clean
 
 ```{r}
+=======
+##3.3 Save data and clean
+
+```{r}
+>>>>>>> 45b34071e78a41a50c38fbec03117e6b2d5dcb5e
 # Define the file path
 file_path <- "ProcessedData/df_no_cov_final.csv"
 
@@ -470,6 +495,7 @@ write.csv(df_no_cov, file_path, row.names = FALSE)
 print(paste("File saved as", file_path))
 
 remove(file_path)
+<<<<<<< HEAD
 ```
 #4. Exploratory Analysis without Covariates
 ##4.1. Simple Tables
@@ -580,5 +606,9 @@ m1_cont <- coxph(Surv(time, laid_off_na_corrected) ~ rosenberg_inp + strata(time
 
 summary(m1_cont)
 
+=======
+>>>>>>> 45b34071e78a41a50c38fbec03117e6b2d5dcb5e
 ```
+
+
 
