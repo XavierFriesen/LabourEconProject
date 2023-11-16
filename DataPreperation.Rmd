@@ -53,124 +53,53 @@ for (year in setdiff(2008:2022, 2016)) {
     self_esteem <- rbind(self_esteem, temp_df)
 }
 
+#In 2016 there was no personality survey, so we will inpute an NA observation for the relevant ID's 
+
+# Subset for individuals with observations in 2015
+subset_2015 <- subset(self_esteem, year == 2015)
+
+# Modify the year to 2016 and set Rosenberg to NA
+subset_2015$year <- 2016
+subset_2015$rosenberg <- NA
+
+# Append this modified subset to the original dataframe
+self_esteem <- rbind(self_esteem, subset_2015)
+
+# Optionally, sort the dataframe again
+self_esteem <- self_esteem[order(self_esteem$nomem_encr, self_esteem$year), ]
+
 # View the final combined dataframe
 View(self_esteem)
-
 ```
 
-##1.2. Filling in NA's
+##1.2. Checking NA's
 it's clear there are many NA's in 2010, 2012, 2015, 2018. But there are still some people that have made the test in those years. 
 ```{r}
 aggregate(is.na(rosenberg) ~ year, data = self_esteem, FUN = sum)
 hist(self_esteem$rosenberg[self_esteem$year==2015], breaks = 49)
 
+#total number of ID's in data-set
+length(unique(self_esteem$nomem_encr))
+
+#Number of ID's per year
 ```
 
-For 2010, 2012, 2015 and 2018 we will inpute the average of the previous years. If one of those is NA, it will take the other one. For 2012 it will use 2011 and 2009 as corresponding years
+We will now create a new variable: rosenberg_inp 
+- This variable is the same as rosenberg, unless rosenberg is NA 
+- If not: it will be take the last available score for Rosenberg for missing values in the years after the first participation in the personality survey 
 
-```{r}
-# Function to calculate the individual-specific average for the two previous years
-individual_avg <- function(year, id, data) {
-    # Filter for the individual and for the two preceding years
-    prev_years <- sort(setdiff((year - 3):(year - 1), c(2016)), decreasing = TRUE)
-    individual_data <- data[data$nomem_encr == id & data$year %in% prev_years, ]
-    
-    # If both years are NA, return NA
-    if (all(is.na(individual_data$rosenberg))) {
-        return(NA)
-    }
-    
-    # Calculate the mean, excluding NA values
-    mean(individual_data$rosenberg, na.rm = TRUE)
-}
-
-# Apply the function to fill NA values for specific years
-for (year in c(2010, 2012, 2015, 2018)) {
-    # Identify rows for the specific year with NA in Rosenberg
-    rows_to_update <- which(self_esteem$year == year & is.na(self_esteem$rosenberg))
-    
-    # Calculate and fill in the average for each individual
-    for (row in rows_to_update) {
-        id <- self_esteem$nomem_encr[row]
-        self_esteem$rosenberg[row] <- individual_avg(year, id, self_esteem)
-    }
-}
-
-# View the updated dataframe
-View(self_esteem)
-
-#check na's 
-aggregate(is.na(rosenberg) ~ year, data = self_esteem, FUN = sum)
-```
-
-##1.3. Inpute average for missing 2016 survey
-For 2016 we input 2015, which was calculated above as the individuals specific average over 2014 and 2013.
-We only do this for people are already participating in the survey prior to 2016. 
+This however will not take care of: 
+1. Missing observations of years before the first participation in the personality survey
+            Due to reversed causality, we cannot use future values in the imputation 
+2. It will create Rosenberg scores, even if a person dropped out before that time. This will later have to be corrected. 
 
 
-```{r}
-# Identify individuals with observations between 2008 and 2015
-individuals <- unique(self_esteem$nomem_encr[self_esteem$year %in% 2008:2015])
-
-# Create a new dataframe for 2016 observations
-self_esteem_2016 <- data.frame()
-
-# Loop through each individual and impute the 2015 value for 2016
-for (id in individuals) {
-    # Find the 2015 Rosenberg score for the individual
-    rosenberg_2015 <- self_esteem$rosenberg[self_esteem$nomem_encr == id & self_esteem$year == 2015]
-    
-    # If there is a 2015 score, create a new observation for 2016
-    if (length(rosenberg_2015) > 0 && !is.na(rosenberg_2015)) {
-        self_esteem_2016 <- rbind(self_esteem_2016, data.frame(nomem_encr = id, year = 2016, rosenberg = rosenberg_2015))
-    }
-}
-
-# Combine the new 2016 observations with the original dataframe
-self_esteem <- rbind(self_esteem, self_esteem_2016)
-
-# View the updated dataframe
-View(self_esteem)
-
-```
 
 
-##1.4. Quick explanatory analysis and adding dummy 
-```{r}
-#average Rosenberg per year
-aggregate(rosenberg ~ year, data = self_esteem, FUN = mean, na.rm = TRUE)
-
-#average Rosenberg per year
-aggregate(rosenberg ~ year, data = self_esteem, FUN = median, na.rm = TRUE)
-
-#check na's 
-aggregate(is.na(rosenberg) ~ year, data = self_esteem, FUN = sum)
-
-#mean standard deviation within individual 
-individual_variation <- aggregate(rosenberg ~ nomem_encr, data = self_esteem, FUN = sd, na.rm = TRUE)
-
-mean(individual_variation$rosenberg, na.rm = TRUE)
-
-#histogram
-hist(self_esteem$rosenberg, breaks = 49)
-
-#dummy, coded 0 as below or equal to 35 (low SE) or 1 as higher than 35
-#or 0 if below or equal to 40 etc.
-self_esteem$dum_35 <- ifelse(self_esteem$rosenberg <= 35, 0, 1)
-self_esteem$dum_40 <- ifelse(self_esteem$rosenberg <= 40, 0, 1)
-self_esteem$dum_45 <- ifelse(self_esteem$rosenberg <= 45, 0, 1)
 
 
-table(self_esteem$dum_35)
-proportions(table(self_esteem$dum_35))
 
-table(self_esteem$dum_40)
-proportions(table(self_esteem$dum_40))
 
-table(self_esteem$dum_45)
-proportions(table(self_esteem$dum_45))
-
-```
 
 
 ##1.5. Cleaning up and Saving Data
@@ -190,7 +119,7 @@ write.csv(self_esteem, file_path, row.names = FALSE)
 # Print a message to confirm saving
 print(paste("File saved as", file_path))
 
-remove(temp_df, personality_data, file_name, suffix, suffixes, temp_neg, temp_pos, year, id, individuals, rosenberg_2015, row, rows_to_update, individual_avg, self_esteem_2016, individual_variation, file_path)
+remove(temp_df, personality_data, file_name, suffix, suffixes, temp_neg, temp_pos, year, id, individuals, rosenberg_2015, row, rows_to_update, individual_avg, self_esteem_2016, individual_variation, file_path, subset_2015)
 
 ```
 
@@ -254,7 +183,6 @@ View(employment)
 
 ## 2.2. Laid-off variable: 
 A person is considered laid off (employment$laid_off = 1) if at t = 1, emp_status = 1, and at t = 2, emp_status = 0 '
-
 
 ```{r}
 # Sort the employment dataframe by id and year
@@ -337,5 +265,51 @@ write.csv(employment, file_path, row.names = FALSE)
 print(paste("File saved as", file_path))
 
 remove(bg_data, current_status, file_name, i, next_status, temp_df, year, file_path)
+```
+
+#3. Merge Employment and Self-Esteem and Inpute Missing Data 
+#3.1. Merge Employment and Self-Esteem 
+
+```{r}
+library(dplyr)
+self_esteem <- rename(self_esteem, id = nomem_encr )
+```
+
+```{r}
+df_no_cov <- merge(employment, self_esteem, by = c("id", "year"), all = T)
+
+# Count the number of observations where both Rosenberg and laid_off_na_corrected are available
+both_available <- sum(!is.na(df_no_cov$rosenberg) & !is.na(df_no_cov$laid_off_na_corrected))
+
+# Count the number of observations where one of them is missing
+one_missing <- sum(is.na(df_no_cov$rosenberg) | is.na(df_no_cov$laid_off_na_corrected))
+
+# Print the results
+cat("Number of observations with both values available:", both_available, "\n")
+cat("Number of observations with one value missing:", one_missing, "\n")
+
+```
+
+Clearly, many respondents have not filled in the personality survey every year. 
+When available, we will use the latest available score from Rosenberg as a substitute: 
+
+##3.2. Inputing Rosenberg Scores
+```{r}
+for (i in 2:nrow(df_no_cov)) {
+    # Check if the current row's rosenberg is NA
+    if (is.na(df_no_cov$rosenberg[i])) {
+        # Check if there are any previous non-NA rosenberg scores for this id
+        previous_rosenberg <- df_no_cov$rosenberg[1:(i-1)][df_no_cov$id[1:(i-1)] == df_no_cov$id[i]]
+        
+        if (any(!is.na(previous_rosenberg))) {
+            # Find the last known rosenberg score for this individual
+            last_known_index <- max(which(df_no_cov$id[1:(i-1)] == df_no_cov$id[i] & !is.na(df_no_cov$rosenberg[1:(i-1)])))
+            df_no_cov$rosenberg[i] <- df_no_cov$rosenberg[last_known_index]
+        }
+    }
+}
+
+# View the updated dataframe
+View(df_no_cov)
 ```
 
