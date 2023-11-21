@@ -219,11 +219,11 @@ Indeed much lower now, only if there is no previous data, for example because th
 
 ##1.4. Creating dummies
 ```{r}
-#dummy, coded 1 as below or equal to 35 (low SE) or 0 as higher than 35
+#dummy, coded 0 as below or equal to 35 (low SE) or 1 as higher than 35
 #or 0 if below or equal to 45 etc.
-self_esteem$dum_35_inp <- ifelse(self_esteem$rosenberg_inp <= 35, 1, 0)
-self_esteem$dum_40_inp <- ifelse(self_esteem$rosenberg_inp <= 40, 1, 0)
-self_esteem$dum_45_inp <- ifelse(self_esteem$rosenberg_inp <= 45, 1, 0)
+self_esteem$dum_35_inp <- ifelse(self_esteem$rosenberg_inp <= 35, 0, 1)
+self_esteem$dum_40_inp <- ifelse(self_esteem$rosenberg_inp <= 40, 0, 1)
+self_esteem$dum_45_inp <- ifelse(self_esteem$rosenberg_inp <= 45, 0, 1)
 
 table(self_esteem$dum_35_inp)
 proportions(table(self_esteem$dum_35_inp))
@@ -469,7 +469,6 @@ control_data_bg$d.high_edu <- ifelse(control_data_bg$oplmet == 5, 1, ifelse(cont
 ##4.1. Merge Employment, Self-Esteem and Control-Variables 
 
 ```{r}
-df_with_na <- merge(employment, self_esteem, control_data_bg, by = c("id", "year"), all = T)
 df_with_na <- merge(employment, self_esteem, by = c("id", "year"), all = TRUE)
 df_with_na <- merge(df_with_na, control_data_bg, by = c("id", "year"), all = TRUE)
 

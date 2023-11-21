@@ -10,19 +10,19 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-#4. Exploratory Analysis without Covariates
-##4.1. Simple Tables
+#6. Exploratory Analysis without Covariates
+##6.1. Simple Tables
 ```{r}
-table(df_no_cov_nona$laid_off, df_no_cov_nona$dum_35_inp)
-table(df_no_cov_nona$laid_off, df_no_cov_nona$dum_40_inp)
-table(df_no_cov_nona$laid_off, df_no_cov_nona$dum_45_inp)
+table(df_no_na$laid_off, df_no_na$dum_35_inp)
+table(df_no_na$laid_off, df_no_na$dum_40_inp)
+table(df_no_na$laid_off, df_no_na$dum_45_inp)
 
 library(ggplot2)
 
 library(ggplot2)
 
 # Creating the continuous plot with a logistic regression line
-ggplot(data = df_no_cov_nona, aes(x = rosenberg_inp, y = laid_off)) +
+ggplot(data = df_no_na, aes(x = rosenberg_inp, y = laid_off)) +
   geom_jitter(width = 0.05, height = 0)+
   geom_point() +  # Add points
   geom_smooth(method = "glm", method.args = list(family = "binomial"), se = FALSE) +
@@ -33,17 +33,17 @@ ggplot(data = df_no_cov_nona, aes(x = rosenberg_inp, y = laid_off)) +
 
 ```
 
-##4.2. Kaplan Meier Curves
+##6.2. Kaplan Meier Curves
 Fitting a Kaplan Meier Curve
 ```{r}
 library(survival)
 library(survminer)
 
-surv_object <- Surv(time = df_no_cov_nona$time, event = df_no_cov_nona$laid_off)
+surv_object <- Surv(time = df_no_na$time, event = df_no_na$laid_off)
 
 km_fit <- survfit(surv_object ~ 1)  # '~ 1' indicates no stratification
 
-ggsurvplot(km_fit, data = df_no_cov_nona, conf.int = TRUE, 
+ggsurvplot(km_fit, data = df_no_na, conf.int = TRUE, 
            title = "Kaplan-Meier Survival Curve",
            xlab = "Time", ylab = "Survival Probability")
 
@@ -54,9 +54,9 @@ remove(surv_object, km_fit)
 
 Splitting the curve by sub-35 dummy: 
 ```{r}
-surv_object <- Surv(time = df_no_cov_nona$time, event = df_no_cov_nona$laid_off)
-km_fit_stratified <- survfit(surv_object ~ dum_35_inp, data = df_no_cov_nona)
-ggsurvplot(km_fit_stratified, data = df_no_cov_nona, conf.int = TRUE,
+surv_object <- Surv(time = df_no_na$time, event = df_no_na$laid_off)
+km_fit_stratified <- survfit(surv_object ~ dum_35_inp, data = df_no_na)
+ggsurvplot(km_fit_stratified, data = df_no_na, conf.int = TRUE,
            palette = c("blue", "red"),   # Optional: specify colors
            title = "Stratified Kaplan-Meier Survival Curves",
            xlab = "Time", ylab = "Survival Probability",
@@ -66,9 +66,9 @@ remove(surv_object, km_fit_stratified)
 ```
 Sub-40
 ```{r}
-surv_object <- Surv(time = df_no_cov_nona$time, event = df_no_cov_nona$laid_off)
-km_fit_stratified <- survfit(surv_object ~ dum_40_inp, data = df_no_cov_nona)
-ggsurvplot(km_fit_stratified, data = df_no_cov_nona, conf.int = TRUE,
+surv_object <- Surv(time = df_no_na$time, event = df_no_na$laid_off)
+km_fit_stratified <- survfit(surv_object ~ dum_40_inp, data = df_no_na)
+ggsurvplot(km_fit_stratified, data = df_no_na, conf.int = TRUE,
            palette = c("blue", "red"),   # Optional: specify colors
            title = "Stratified Kaplan-Meier Survival Curves",
            xlab = "Time", ylab = "Survival Probability",
@@ -79,9 +79,9 @@ remove(surv_object, km_fit_stratified)
 
 Sub-45
 ```{r}
-surv_object <- Surv(time = df_no_cov_nona$time, event = df_no_cov_nona$laid_off)
-km_fit_stratified <- survfit(surv_object ~ dum_45_inp, data = df_no_cov_nona)
-ggsurvplot(km_fit_stratified, data = df_no_cov_nona, conf.int = TRUE,
+surv_object <- Surv(time = df_no_na$time, event = df_no_na$laid_off)
+km_fit_stratified <- survfit(surv_object ~ dum_45_inp, data = df_no_na)
+ggsurvplot(km_fit_stratified, data = df_no_na, conf.int = TRUE,
            palette = c("blue", "red"),   # Optional: specify colors
            title = "Stratified Kaplan-Meier Survival Curves",
            xlab = "Time", ylab = "Survival Probability",
@@ -90,7 +90,7 @@ ggsurvplot(km_fit_stratified, data = df_no_cov_nona, conf.int = TRUE,
 remove(surv_object, km_fit_stratified)
 ```
 
-##4.3. Piecewise Constant Model without Covariates
+##6.3. Piecewise Constant Model without Covariates
 Intervals are years
 
 using different dummies:
@@ -100,27 +100,235 @@ library(survival)
 
 # Fit the models
 # creating yearly intervals
-df_no_cov_nona$time_interval <- cut(df_no_cov_nona$time, breaks = seq(0, max(df_no_cov_nona$time), by = 1), include.lowest = TRUE, right = FALSE)
+df_no_na$time_interval <- cut(df_no_na$time, breaks = seq(0, max(df_no_na$time), by = 1), include.lowest = TRUE, right = FALSE)
 
 
-m1_sub_35 <- coxph(Surv(time, laid_off) ~ dum_35_inp + strata(time_interval), data = df_no_cov_nona)
+m1_sub_35 <- coxph(Surv(time, laid_off) ~ dum_35_inp + strata(year), data = df_no_na, robust = TRUE)
 
 summary(m1_sub_35) #interpretation: if m1_sub_35 is equal to 1, this corresponds to a  higher risk in getting fired compared to a higher self-esteem. This effect is statistically significantly different from 0. 
 
 
-m1_sub_40 <- coxph(Surv(time, laid_off) ~ dum_40_inp + strata(time_interval), data = df_no_cov_nona)
+m1_sub_40 <- coxph(Surv(time, laid_off) ~ dum_40_inp + strata(year), data = df_no_na, robust = TRUE)
 
 summary(m1_sub_40)
 
-m1_sub_45 <- coxph(Surv(time, laid_off) ~ dum_45_inp + strata(time_interval), data = df_no_cov_nona)
+m1_sub_45 <- coxph(Surv(time, laid_off) ~ dum_45_inp + strata(year), data = df_no_na, robust = TRUE)
 
 summary(m1_sub_45)
 
-m1_cont <- coxph(Surv(time, laid_off) ~ rosenberg_inp + strata(time_interval), data = df_no_cov_nona)
+m1_cont <- coxph(Surv(time, laid_off) ~ rosenberg_inp + strata(year), data = df_no_na)
 
-summary(m1_cont)
+summary(m1_cont, robust = TRUE)
+
+remove(m1_sub_35, m1_sub_40, m1_sub_45, m1_cont)
 
 ```
 
+#7. Gender Effects, No Further Covariates
+##7.1. Using Simple Tables 
+```{r}
+table(df_no_na$female, df_no_na$dum_35_inp)
+table(df_no_na$female, df_no_na$dum_40_inp)
+table(df_no_na$female, df_no_na$dum_45_inp)
 
+table(df_no_na$female, df_no_na$laid_off)
+```
+
+##7.2. Kaplan-Meier Curves 
+```{r}
+df_no_na_fem <- subset(df_no_na, female ==1)
+df_no_na_male <- subset(df_no_na, female ==0)
+```
+
+Using 35 dummy
+```{r}
+library(ggplot2)
+
+par(mfrow = c(2, 1))
+
+surv_object <- Surv(time = df_no_na_male$time, event = df_no_na_male$laid_off)
+km_fit_stratified <- survfit(surv_object ~ dum_35_inp, data = df_no_na_male)
+
+ggsurvplot(km_fit_stratified, data = df_no_na_male, conf.int = TRUE,
+           palette = c("blue", "red"),   # Optional: specify colors
+           title = "Male",
+           xlab = "Time", ylab = "Survival Probability",
+           pval = TRUE)  # Optional: add a p-value for the comparison
+
+remove(surv_object, km_fit_stratified)
+
+surv_object <- Surv(time = df_no_na_fem$time, event = df_no_na_fem$laid_off)
+km_fit_stratified <- survfit(surv_object ~ dum_35_inp, data = df_no_na_fem)
+
+ggsurvplot(km_fit_stratified, data = df_no_na_fem, conf.int = TRUE,
+           palette = c("blue", "red"),   # Optional: specify colors
+           title = "Female",
+           xlab = "Time", ylab = "Survival Probability",
+           pval = TRUE)  # Optional: add a p-value for the comparison
+
+remove(surv_object, km_fit_stratified)
+```
+
+using 40 dummy
+```{r}
+par(mfrow = c(2, 1))
+
+surv_object <- Surv(time = df_no_na_male$time, event = df_no_na_male$laid_off)
+km_fit_stratified <- survfit(surv_object ~ dum_40_inp, data = df_no_na_male)
+
+ggsurvplot(km_fit_stratified, data = df_no_na_male, conf.int = TRUE,
+           palette = c("blue", "red"),   # Optional: specify colors
+           title = "Male",
+           xlab = "Time", ylab = "Survival Probability",
+           pval = TRUE)  # Optional: add a p-value for the comparison
+
+remove(surv_object, km_fit_stratified)
+
+surv_object <- Surv(time = df_no_na_fem$time, event = df_no_na_fem$laid_off)
+km_fit_stratified <- survfit(surv_object ~ dum_40_inp, data = df_no_na_fem)
+
+ggsurvplot(km_fit_stratified, data = df_no_na_fem, conf.int = TRUE,
+           palette = c("blue", "red"),   # Optional: specify colors
+           title = "Female",
+           xlab = "Time", ylab = "Survival Probability",
+           pval = TRUE)  # Optional: add a p-value for the comparison
+
+remove(surv_object, km_fit_stratified)
+```
+
+using 45 dummy
+```{r}
+par(mfrow = c(2, 1))
+
+surv_object <- Surv(time = df_no_na_male$time, event = df_no_na_male$laid_off)
+km_fit_stratified <- survfit(surv_object ~ dum_45_inp, data = df_no_na_male)
+
+ggsurvplot(km_fit_stratified, data = df_no_na_male, conf.int = TRUE,
+           palette = c("blue", "red"),   # Optional: specify colors
+           title = "Male",
+           xlab = "Time", ylab = "Survival Probability",
+           pval = TRUE)  # Optional: add a p-value for the comparison
+
+remove(surv_object, km_fit_stratified)
+
+surv_object <- Surv(time = df_no_na_fem$time, event = df_no_na_fem$laid_off)
+km_fit_stratified <- survfit(surv_object ~ dum_45_inp, data = df_no_na_fem)
+
+ggsurvplot(km_fit_stratified, data = df_no_na_fem, conf.int = TRUE,
+           palette = c("blue", "red"),   # Optional: specify colors
+           title = "Female",
+           xlab = "Time", ylab = "Survival Probability",
+           pval = TRUE)  # Optional: add a p-value for the comparison
+
+remove(surv_object, km_fit_stratified)
+```
+
+
+##7.3. Piecewise Regressions with Gender (Model A)
+Are the results driven by outliers? 
+```{r}
+A_sub_35_female <- coxph(Surv(time, laid_off) ~ dum_35_inp + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(A_sub_35_female)
+
+A_sub_35_male <- coxph(Surv(time, laid_off) ~ dum_35_inp + strata(year), data = df_no_na_male, robust = TRUE)
+
+summary(A_sub_35_male)
+
+A_sub_40_female <- coxph(Surv(time, laid_off) ~ dum_40_inp + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(A_sub_40_female)
+
+A_sub_40_male <- coxph(Surv(time, laid_off) ~ dum_40_inp + strata(year), data = df_no_na_male, robust = TRUE)
+
+summary(A_sub_40_male)
+
+A_sub_45_female <- coxph(Surv(time, laid_off) ~ dum_45_inp + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(A_sub_45_female)
+
+A_sub_45_male <- coxph(Surv(time, laid_off) ~ dum_45_inp + strata(year), data = df_no_na_male, robust = TRUE)
+
+summary(A_sub_45_male)
+
+remove(A_sub_40_female, A_sub_40_male, A_sub_35_male, A_sub_35_female, A_sub_45_female, A_sub_45_male)
+
+#conclusion: while hazard rates are different, both in female and male the dummy is statistically significant
+```
+
+#8. Adding other covariates to piecewise regression 
+##8.1 Model B, education and age
+```{r}
+B_sub_35_female <- coxph(Surv(time, laid_off) ~ dum_35_inp + d.high_edu + leeftijd + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(B_sub_35_female)
+
+test.ph <- cox.zph(B_sub_35_female) #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+B_sub_35_male <- coxph(Surv(time, laid_off) ~ dum_35_inp + d.high_edu + leeftijd + strata(year), data = df_no_na_male, robust = TRUE) 
+
+summary(B_sub_35_male)
+
+test.ph <- cox.zph(B_sub_35_male) #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+B_sub_40_female <- coxph(Surv(time, laid_off) ~ dum_40_inp + d.high_edu + leeftijd + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(B_sub_40_female)
+
+B_sub_40_male <- coxph(Surv(time, laid_off) ~ dum_40_inp + d.high_edu + leeftijd + strata(year), data = df_no_na_male, robust = TRUE)
+
+summary(B_sub_40_male)
+
+B_sub_45_female <- coxph(Surv(time, laid_off) ~ dum_45_inp + d.high_edu + leeftijd + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(B_sub_45_female)
+
+B_sub_45_male <- coxph(Surv(time, laid_off) ~ dum_45_inp + d.high_edu + leeftijd + strata(year), data = df_no_na_male, robust = TRUE)
+
+summary(B_sub_45_male)
+
+remove(B_sub_40_female, B_sub_40_male, B_sub_35_male, B_sub_35_female, B_sub_45_female, B_sub_45_male)
+
+#Same
+
+```
+
+##8.2. Model C: Adding children and partner 
+```{r}
+C_sub_35_female <- coxph(Surv(time, laid_off) ~ dum_35_inp + d.high_edu + leeftijd + partner + d.children + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(C_sub_35_female)
+
+test.ph <- cox.zph(C_sub_35_female) #testing assumptions using Schoenfeld Residuals
+test.ph #Be careful Partner is statistically significant (!!!)
+
+C_sub_35_male <- coxph(Surv(time, laid_off) ~ dum_35_inp + d.high_edu + leeftijd + partner + d.children + strata(year), data = df_no_na_male, robust = TRUE) 
+
+summary(C_sub_35_male) 
+
+test.ph <- cox.zph(C_sub_35_male)  #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+C_sub_40_female <- coxph(Surv(time, laid_off) ~ dum_40_inp + d.high_edu + leeftijd + partner + d.children + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(C_sub_40_female)
+
+C_sub_40_male <- coxph(Surv(time, laid_off) ~ dum_40_inp + d.high_edu + leeftijd + partner + d.children + strata(year), data = df_no_na_male, robust = TRUE)
+
+summary(C_sub_40_male)
+
+C_sub_45_female <- coxph(Surv(time, laid_off) ~ dum_45_inp + d.high_edu + leeftijd + partner + d.children + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(C_sub_45_female)
+
+C_sub_45_male <- coxph(Surv(time, laid_off) ~ dum_45_inp + d.high_edu + leeftijd + partner + d.children + strata(year), data = df_no_na_male, robust = TRUE)
+
+summary(C_sub_45_male)
+
+remove(C_sub_40_female, C_sub_40_male, C_sub_35_male, C_sub_35_female, C_sub_45_female, C_sub_45_male, test.ph)
+
+#similar results as to Model A and B 
+```
 
