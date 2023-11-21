@@ -1,0 +1,105 @@
+---
+title: "Loading Liss Data in R"
+author: "Xavier"
+date: "2023-11-21"
+output: html_document
+---
+
+#2. Lay-off Dummies
+#2.1. Designing dummy for working vs. not working: 
+
+```{r}
+# Initialize an empty dataframe for the combined results
+employment <- data.frame()
+
+# Loop through each year from 2008 to 2022
+for (year in 2008:2022) {
+      # Construct the file name based on the year
+      file_name <- paste0("RawData/Background Variables/bg_", year, ".dta")
+      
+      # Read the data
+      bg_data <- read_dta(file_name)
+      
+      # Create the emp_status column
+      # Employed (belbezig = 1, 2, 3), Unemployed (belbezig = 4, 5, 6)
+      bg_data$emp_status <- ifelse(bg_data$belbezig %in% c(1, 2, 3, 5, 7), 1,   ifelse(bg_data$belbezig %in% c(4, 6), 0, NA))
+      
+      # Create a temporary dataframe for the year
+      temp_df <- data.frame(
+            id = bg_data$nomem_encr,
+            emp_status = bg_data$emp_status,
+            year = year
+      )
+      
+      # Combine the temporary dataframe with the main dataframe
+      employment <- rbind(employment, temp_df)
+}
+```
+
+
+
+##1.1. Creating a long dataset, with Rosenberg scores when available for each year. 
+note: There was no personality survey in 2016
+
+```{r}
+
+# Initialize an empty dataframe to store the combined results
+self_esteem <- data.frame()
+
+# Define the suffixes for each year
+suffixes <- c("2008" = "a", "2009" = "b", "2010" = "c", "2011" = "d", 
+              "2012" = "e", "2013" = "f", "2014" = "g", "2015" = "h", 
+              "2017" = "i", "2018" = "j", "2019" = "k", "2020" = "l", 
+              "2021" = "m", "2022" = "n")
+
+# Loop through the years 2008 to 2022, excluding 2016
+for (year in setdiff(2008:2022, 2016)) {
+      # Construct the file name based on the year
+      file_name <- paste0("RawData/Personality/Personality_", year, ".dta")
+      
+      # Read the data
+      personality_data <- read_dta(file_name)
+      
+      # Create a temporary dataframe for the year
+      temp_df <- data.frame(
+            nomem_encr = personality_data$nomem_encr,
+            year = year
+      )
+      
+      # Get the suffix for the year
+      suffix <- suffixes[as.character(year)]
+      
+      # Calculate the Rosenberg score components
+      temp_pos <- rowSums(personality_data[,paste0("cp", substr(year, 3, 4), suffix, c("070", "071", "073", "075", "076"))], na.rm = FALSE)
+      temp_neg <- rowSums(8 - personality_data[,paste0("cp", substr(year, 3, 4), suffix, c("072", "074", "077", "078", "079"))], na.rm = FALSE)
+      
+      # Check for NA in either temp_pos or temp_neg and calculate Rosenberg score
+      temp_df$rosenberg <- ifelse(is.na(temp_pos) | is.na(temp_neg), NA, temp_pos + temp_neg)
+      
+      # Combine the temporary dataframe with the main dataframe
+      self_esteem <- rbind(self_esteem, temp_df)
+}
+
+#In 2016 there was no personality survey, so we will inpute an NA observation for the relevant ID's 
+
+# Subset for individuals with observations in 2015
+subset_2015 <- subset(self_esteem, year == 2015)
+
+# Modify the year to 2016 and set Rosenberg to NA
+subset_2015$year <- 2016
+subset_2015$rosenberg <- NA
+
+# Append this modified subset to the original dataframe
+self_esteem <- rbind(self_esteem, subset_2015)
+
+# Optionally, sort the dataframe again
+self_esteem <- self_esteem[order(self_esteem$nomem_encr, self_esteem$year), ]
+
+# View the final combined dataframe
+View(self_esteem)
+```
+
+
+
+
+

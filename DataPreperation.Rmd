@@ -359,94 +359,8 @@ print(paste("File saved as", file_path))
 remove(bg_data, file_name, i, temp_df, year, file_path)
 ```
 
-#3. Merge Employment and Self-Esteem 
-#3.1. Merge Employment and Self-Esteem 
-
-```{r}
-
-```
-
-```{r}
-df_no_cov <- merge(employment, self_esteem, by = c("id", "year"), all = T)
-
-# Count the number of observations where both Rosenberg and laid_off are available
-both_available <- sum(!is.na(df_no_cov$rosenberg_inp) & !is.na(df_no_cov$laid_off))
-
-# Count the number of observations where one of them is missing
-one_missing <- sum(is.na(df_no_cov$rosenberg_inp) | is.na(df_no_cov$laid_off))
-
-# Count the number of observations where rosenberg of them is missing
-rosenberg_missing <- sum(is.na(df_no_cov$rosenberg_inp) & !is.na(df_no_cov$laid_off))
-
-laid_off_missing <- sum(!is.na(df_no_cov$rosenberg_inp) & is.na(df_no_cov$laid_off))
-
-# Print the results
-cat("Number of observations with both values available:", both_available, "\n")
-cat("Number of observations with one value missing:", one_missing, "\n")
-cat("Number of observations with Rosenberg only missing:", rosenberg_missing, "\n")
-cat("Number of observations with Laid-Off only missing:", laid_off_missing, "\n")
-remove(both_available, one_missing, rosenberg_missing, laid_off_missing)
-```
-
-We have a lot of observations missing: 
-- 41.000 people without Rosenberg_Inp, so people who have never participated in the personality survey 
-
-- 42.170 observations with Laid-Off missing, meaning they were not available to work during the year of the survey or the year after (for example retired, disabled, working in the household)
-
-We will only include observations with both observations available. 
-We should later check for sensitivity of these results (A quick check: % of lay-offs is much lower in the excluded group, but this is not illogical, since a large part of this excluded group is not-working, thus cannot be laid-off)
-
-```{r}
-df_no_cov_nona <- subset(df_no_cov, !is.na(rosenberg_inp)&!is.na(laid_off))
-```
-
-We should still check if there is a difference between the group who have filled in the personality survey, and those who haven't.
-
-Notably: proportion of lay-offs is much higher in those that have filled out the survey. 
-
-Potential attrition problem (???)
-
-```{r}
-
-table(df_no_cov$laid_off[is.na(df_no_cov$rosenberg_inp) == T])
-table(df_no_cov$laid_off[is.na(df_no_cov$rosenberg_inp) == F])
-```
-##3.3 Add time variable for survival analysis
-time is 0 for the first year a person responds to the survey and increments by 1 for each subsequent year
-
-```{r}
-
-df_no_cov_nona <- df_no_cov_nona[order(df_no_cov_nona$id, df_no_cov_nona$year), ]
-
-# Create the time variable
-df_no_cov_nona <- transform(df_no_cov_nona, time = year - ave(year, id, FUN = min))
-```
-
-##3.4 Save data and clean
-
-```{r}
-
-# Define the file path
-file_path <- "ProcessedData/df_no_cov_final.csv"
-
-# Check if the ProcessedData folder exists, create it if it doesn't
-if (!dir.exists("ProcessedData")) {
-  dir.create("ProcessedData")
-}
-
-# Save the self_esteem dataframe as a CSV file
-write.csv(df_no_cov_nona, file_path, row.names = FALSE)
-
-# Print a message to confirm saving
-print(paste("File saved as", file_path))
-
-remove(file_path)
-
-```
-
-#4. Gathering Control Variables
-
-##4.1. From background survey
+#3. Gathering Control Variables
+##3.1. From background survey
 Be careful, to avoid an error, all variables have to be converted. 
 And this means that if the orig
 ```{r}
@@ -477,10 +391,13 @@ remove(temp_df, bg_data, file_name, control_variables, labelled_vars, year)
 ```
 
 
-##4.2. Checking background control variables for outliers and creating dummies
+##3.2. Checking background control variables for outliers and creating dummies
 ```{r}
 #remove all rows if nomenc = NA
 control_data_bg <- control_data_bg[!is.na(control_data_bg$nomem_encr), ]
+
+#rename
+control_data_bg <- rename(control_data_bg, id = nomem_encr)
 
 #gender
 sum(is.na(control_data_bg$geslacht)) #1
@@ -488,6 +405,8 @@ table(control_data_bg$geslacht) #3 is other, but is only introduced since 2022, 
 
 #create dummy (female = 1, male = 0)
 control_data_bg$female <- ifelse(control_data_bg$geslacht == 2, 1, ifelse(control_data_bg$geslacht == 1, 0, NA))
+
+control_data_bg = subset(control_data_bg, select = -geslacht) #remove redundant variable
 
 #age
 sum(is.na(control_data_bg$leeftijd)) #0
@@ -546,3 +465,122 @@ control_data_bg$d.high_edu <- ifelse(control_data_bg$oplmet == 5, 1, ifelse(cont
 
 
 
+#4. Matching Covariates and Other Data 
+##4.1. Merge Employment, Self-Esteem and Control-Variables 
+
+```{r}
+df_with_na <- merge(employment, self_esteem, control_data_bg, by = c("id", "year"), all = T)
+df_with_na <- merge(employment, self_esteem, by = c("id", "year"), all = TRUE)
+df_with_na <- merge(df_with_na, control_data_bg, by = c("id", "year"), all = TRUE)
+
+```
+
+##4.2. Dealing with NA's in data-set
+We have a large number of missing values for all three datasets, 
+First of all: rosenberg_inp and laid_off are critical: 
+```{r}
+# Count the number of observations where both Rosenberg and laid_off are available
+both_available <- sum(!is.na(df_with_na$rosenberg_inp) & !is.na(df_with_na$laid_off))
+
+# Count the number of observations where one of them is missing
+one_missing <- sum(is.na(df_with_na$rosenberg_inp) | is.na(df_with_na$laid_off))
+
+# Count the number of observations where rosenberg of them is missing
+rosenberg_missing <- sum(is.na(df_with_na$rosenberg_inp) & !is.na(df_with_na$laid_off))
+
+laid_off_missing <- sum(!is.na(df_with_na$rosenberg_inp) & is.na(df_with_na$laid_off))
+
+# Print the results
+cat("Number of observations with both values available:", both_available, "\n")
+cat("Number of observations with one value missing:", one_missing, "\n")
+cat("Number of observations with Rosenberg only missing:", rosenberg_missing, "\n")
+cat("Number of observations with Laid-Off only missing:", laid_off_missing, "\n")
+remove(both_available, one_missing, rosenberg_missing, laid_off_missing)
+```
+
+We have a lot of observations missing: 
+- 41.022 people without Rosenberg_Inp, so people who have never participated in the personality survey 
+
+- 42.170 observations with Laid-Off missing, meaning they were not available to work during the year of the survey or the year after (for example retired, disabled, working in the household)
+
+We will only include observations with both observations available. 
+We should later check for sensitivity of these results (A quick check: % of lay-offs is much lower in the excluded group, but this is not illogical, since a large part of this excluded group is not-working, thus cannot be laid-off)
+
+```{r}
+df_no_na <- subset(df_with_na, !is.na(rosenberg_inp)&!is.na(laid_off))
+```
+
+We should still check if there is a difference between the group who have filled in the personality survey, and those who haven't.
+
+Notably: proportion of lay-offs is much higher in those that have filled out the personality survey. 
+Potential attrition problem (???), further research is required
+
+```{r}
+table(df_with_na$laid_off[is.na(df_with_na$rosenberg_inp) == T])
+table(df_with_na$laid_off[is.na(df_with_na$rosenberg_inp) == F])
+```
+##4.3 Add time variable for survival analysis
+time is 0 for the first year a person responds to the survey and increments by 1 for each subsequent year
+
+```{r}
+df_no_na <- df_no_na[order(df_no_na$id, df_no_na$year), ]
+
+# Create the time variable
+df_no_na <- transform(df_no_na, time = year - ave(year, id, FUN = min))
+
+df_with_na <- df_with_na[order(df_with_na$id, df_with_na$year), ]
+
+# Create the time variable
+df_with_na <- transform(df_with_na, time = year - ave(year, id, FUN = min))
+```
+
+##4.4. Checking missing covariates: 
+6.12% of observations miss the background survey data. 
+What's the reason there? 
+
+```{r}
+library(dplyr)
+
+# Calculating the proportion of NAs for each variable
+na_proportions <- df_no_na %>%
+  summarise_all(~mean(is.na(.)))
+
+# Viewing the results
+na_proportions
+remove(na_proportions)
+```
+##4.5 Save data and clean
+
+```{r}
+# Define the file path
+file_path <- "ProcessedData/df_no_na_final.csv"
+
+# Check if the ProcessedData folder exists, create it if it doesn't
+if (!dir.exists("ProcessedData")) {
+  dir.create("ProcessedData")
+}
+
+# Save the self_esteem dataframe as a CSV file
+write.csv(df_no_na, file_path, row.names = FALSE)
+
+# Print a message to confirm saving
+print(paste("File saved as", file_path))
+
+remove(file_path)
+
+file_path <- "ProcessedData/df_with_na_final.csv"
+
+# Check if the ProcessedData folder exists, create it if it doesn't
+if (!dir.exists("ProcessedData")) {
+  dir.create("ProcessedData")
+}
+
+# Save the self_esteem dataframe as a CSV file
+write.csv(df_with_na, file_path, row.names = FALSE)
+
+# Print a message to confirm saving
+print(paste("File saved as", file_path))
+
+remove(file_path)
+
+```
