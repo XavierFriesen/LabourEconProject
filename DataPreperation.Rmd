@@ -16,6 +16,7 @@ By running 1.1. + 1.2. + 1.3. + 1.4. you will get self_esteem_final, a long data
 note: There was no personality survey in 2016
 
 ```{r}
+library(haven)
 # Initialize an empty dataframe to store the combined results
 self_esteem <- data.frame()
 
@@ -86,7 +87,7 @@ We also have random observations missing, if people did not respond to the surve
 So if in between the first time they submitted the personality survey, and the last time there is an observation missing, we will create a new observation with Rosenberg = NA. 
 
 ```{r}
-#Check if there are persons who miss internal datasets
+#Check if there are persons who miss internal data 
 
 # Unique identifiers
 unique_ids <- unique(self_esteem$nomem_encr)
@@ -141,8 +142,6 @@ Rechecking NA's
 ```{r}
 #count the number of NA-observations
 aggregate(is.na(rosenberg) ~ year, data = self_esteem, FUN = sum)
-
-
 library(dplyr)
 
 # Count the number of non-NA observations for Rosenberg per year
@@ -176,24 +175,21 @@ remove(na_count, total_count, merged_counts)
 
 
 ##1.3. Inputing Data
-
 We will now create a new variable: rosenberg_inp 
 - This variable is the same as rosenberg, unless rosenberg is NA 
-- If not: it will be take the last available score for Rosenberg for missing values in the years after the first participation in the personality survey.
+- If not: it will take the last available score for Rosenberg for missing values in the years after the first participation in the personality survey.
        - Last Observation Carried Forward Approach
 
 ```{r}
 library(zoo)
-
-# Assuming your dataframe is named self_esteem and has columns 'nomem_encr', 'year', and 'rosenberg'
 self_esteem$rosenberg_inp <- with(self_esteem, ave(rosenberg, nomem_encr, FUN = function(x) na.locf(x, na.rm = FALSE)))
 
 # View the updated dataframe
 head(self_esteem)
 
 ```
+
 Rechecking NA's 
-Indeed much lower now, only if there are no previous data.
 ```{r}
 # in %
 library(dplyr)
@@ -219,6 +215,8 @@ remove(na_count, total_count, merged_counts)
 
 ```
 
+Indeed much lower now, only if there is no previous data, for example because the Rosenberg Self-esteem scale was not submitted, but other parts of the personality survey were.
+
 ##1.4. Creating dummies
 ```{r}
 #dummy, coded 1 as below or equal to 35 (low SE) or 0 as higher than 35
@@ -226,8 +224,6 @@ remove(na_count, total_count, merged_counts)
 self_esteem$dum_35_inp <- ifelse(self_esteem$rosenberg_inp <= 35, 1, 0)
 self_esteem$dum_40_inp <- ifelse(self_esteem$rosenberg_inp <= 40, 1, 0)
 self_esteem$dum_45_inp <- ifelse(self_esteem$rosenberg_inp <= 45, 1, 0)
-
-
 
 table(self_esteem$dum_35_inp)
 proportions(table(self_esteem$dum_35_inp))
@@ -242,6 +238,8 @@ proportions(table(self_esteem$dum_45_inp))
 
 ##1.5. Cleaning up and Saving Data
 ```{r} 
+library(dplyr)
+self_esteem <- rename(self_esteem, id = nomem_encr)
 
 # Define the file path
 file_path <- "ProcessedData/self_esteem_final.csv"
@@ -257,7 +255,7 @@ write.csv(self_esteem, file_path, row.names = FALSE)
 # Print a message to confirm saving
 print(paste("File saved as", file_path))
 
-remove(temp_df, personality_data, file_name, suffix, suffixes, temp_neg, temp_pos, year, id, individuals, rosenberg_2015, row, rows_to_update, individual_avg, self_esteem_2016, individual_variation, file_path, subset_2015, individuals_with_missing_years, individuals_with_internal_missing_years)
+remove(temp_df, personality_data, file_name, suffix, suffixes, temp_neg, temp_pos,     file_path, subset_2015)
 
 ```
 
@@ -270,19 +268,13 @@ Using criteria of Van der Meer & Wielers (2016):
 the background variables of the study. Everyone in paid employment is employed, (belbezig = 1), everyone searching for a job is unemployed (belbezig = 4, 5 and 6). We do not have a reliable measure of the duration of unemployment. This is not asked in the questionnaire and is very difficult to construct. We can only see if respondents were unemployed in consecutive waves. We will miss a period of in between employment, but also a period of in between unemployment if one indicates to be employed in two consecutive waves."
 
 empo: 
-We also consider people working in the family business (belbezig = 2), and freelancers/independent contractors (belbezig = 3) as employed
-
-For our survival analysis, considering we will be looking at lay-offs, we also include belbezig = 5 as 'employed', as these are first time job-seekers, since they have never been laid-of. The same for belbezig = 7 for 'students'
+We also consider people working in the family business (belbezig = 2), and freelancers/independent contractors (belbezig = 3), and students (belbezig = 7) as employed
 
 Unemployed
 belbezig = 4, 6
 
-
 Censoring: 
-People that went with (early) retirement or lost their job due to a disablity are NA, and thus drop-out of the survival analysis. '
-
-As we exclude people that are too young to have job, belbezig = 14.
-
+People that went with (early) retirement or lost their job due to a disablity are NA, and thus drop-out of the survival analysis. For our survival analysis, considering we will be looking at lay-offs, we also code belbezig = 5 as NA, as these are first time job-seekers, and they have never been laid-off. We also exclude people that are too young to have job, belbezig = 14.
 
 Dummy = 1 if employed, 0 = if unemployed
 
@@ -300,8 +292,8 @@ for (year in 2008:2022) {
     bg_data <- read_dta(file_name)
     
     # Create the emp_status column
-    # Employed (belbezig = 1, 2, 3), Unemployed (belbezig = 4, 5, 6)
-    bg_data$emp_status <- ifelse(bg_data$belbezig %in% c(1, 2, 3, 5, 7), 1,   ifelse(bg_data$belbezig %in% c(4, 6), 0, NA))
+    # Employed (belbezig = 1, 2, 3, 7), Unemployed (belbezig = 4, 6)
+    bg_data$emp_status <- ifelse(bg_data$belbezig %in% c(1, 2, 3, 7), 1,   ifelse(bg_data$belbezig %in% c(4, 6), 0, NA))
     
     # Create a temporary dataframe for the year
     temp_df <- data.frame(
@@ -320,7 +312,7 @@ View(employment)
 ```
 
 ## 2.2. Laid-off variable: 
-A person is considered laid off (employment$laid_off = 1) if at t = 1, emp_status = 1, and at t = 2, emp_status = 0 '
+A person is considered laid off at t=1 (employment$laid_off = 1) if at t = 1, emp_status = 1, and at t = 2, emp_status = 0 '
 
 ```{r}
 # Sort the employment dataframe by id and year
@@ -346,47 +338,9 @@ for (i in 1:(nrow(employment) - 1)) {
 View(employment)
 ```
 
-#2.3. Lay-offs, NA Corrected
-The above variables creates many na's
-so laid_off_na_corrected corrects if a person has a different job status (e.g. housewife, retirement etc)
-
-If both are NA, lay-off = 0 
-If t=0 is na, and t = 1 is 0 then lay-off = 1
-If t=0 is na, and t = 1 is 1 then lay-off = 0
-If t=0 is 1, and t=1 is NA then lay-off = 0
-If t=0 is 0, and t=1 is NA then lay-off = 0
-
-```{r}
-# Sort the employment dataframe by id and year
-employment <- employment[order(employment$id, employment$year), ]
-
-# Initialize the laid_off_na_corrected column with 0
-employment$laid_off_na_corrected <- 0
-
-# Loop through the dataframe to set laid_off_na_corrected
-for (i in 1:(nrow(employment) - 1)) {
-    if (employment$id[i] == employment$id[i + 1]) {
-        current_status <- employment$emp_status[i]
-        next_status <- employment$emp_status[i + 1]
-
-        # Check for NA in current and next status
-        if (is.na(current_status) || is.na(next_status)) {
-            if (is.na(current_status) && !is.na(next_status) && next_status == 0) {
-                employment$laid_off_na_corrected[i] <- 1
-            } else {
-                employment$laid_off_na_corrected[i] <- 0
-            }
-        } else {
-            # Apply conditions for non-NA values
-            employment$laid_off_na_corrected[i] <- ifelse(current_status == 1 && next_status == 0, 1, 0)
-        }
-    }
-}
 
 
-```
-
-##2.4. Save and clean 
+##2.3. Save and clean 
 ```{r}
 # Define the file path
 file_path <- "ProcessedData/employment_final.csv"
@@ -402,30 +356,29 @@ write.csv(employment, file_path, row.names = FALSE)
 # Print a message to confirm saving
 print(paste("File saved as", file_path))
 
-remove(bg_data, current_status, file_name, i, next_status, temp_df, year, file_path)
+remove(bg_data, file_name, i, temp_df, year, file_path)
 ```
 
 #3. Merge Employment and Self-Esteem 
 #3.1. Merge Employment and Self-Esteem 
 
 ```{r}
-library(dplyr)
-self_esteem <- rename(self_esteem, id = nomem_encr )
+
 ```
 
 ```{r}
 df_no_cov <- merge(employment, self_esteem, by = c("id", "year"), all = T)
 
-# Count the number of observations where both Rosenberg and laid_off_na_corrected are available
-both_available <- sum(!is.na(df_no_cov$rosenberg_inp) & !is.na(df_no_cov$laid_off_na_corrected))
+# Count the number of observations where both Rosenberg and laid_off are available
+both_available <- sum(!is.na(df_no_cov$rosenberg_inp) & !is.na(df_no_cov$laid_off))
 
 # Count the number of observations where one of them is missing
-one_missing <- sum(is.na(df_no_cov$rosenberg_inp) | is.na(df_no_cov$laid_off_na_corrected))
+one_missing <- sum(is.na(df_no_cov$rosenberg_inp) | is.na(df_no_cov$laid_off))
 
 # Count the number of observations where rosenberg of them is missing
-rosenberg_missing <- sum(is.na(df_no_cov$rosenberg_inp) & !is.na(df_no_cov$laid_off_na_corrected))
+rosenberg_missing <- sum(is.na(df_no_cov$rosenberg_inp) & !is.na(df_no_cov$laid_off))
 
-laid_off_missing <- sum(!is.na(df_no_cov$rosenberg_inp) & is.na(df_no_cov$laid_off_na_corrected))
+laid_off_missing <- sum(!is.na(df_no_cov$rosenberg_inp) & is.na(df_no_cov$laid_off))
 
 # Print the results
 cat("Number of observations with both values available:", both_available, "\n")
@@ -435,30 +388,38 @@ cat("Number of observations with Laid-Off only missing:", laid_off_missing, "\n"
 remove(both_available, one_missing, rosenberg_missing, laid_off_missing)
 ```
 
-So especially the number of observations with Rosenberg only missing is very high. These supposedly 74.090 observations of people that have never participated in the personality survey. We will exclude them from the analysis. 
+We have a lot of observations missing: 
+- 41.000 people without Rosenberg_Inp, so people who have never participated in the personality survey 
+
+- 42.170 observations with Laid-Off missing, meaning they were not available to work during the year of the survey or the year after (for example retired, disabled, working in the household)
+
+We will only include observations with both observations available. 
+We should later check for sensitivity of these results (A quick check: % of lay-offs is much lower in the excluded group, but this is not illogical, since a large part of this excluded group is not-working, thus cannot be laid-off)
 
 ```{r}
-df_no_cov <- subset(df_no_cov, !is.na(rosenberg_inp))
-
-remove(both_available, one_missing, rosenberg_missing, laid_off_missing)
+df_no_cov_nona <- subset(df_no_cov, !is.na(rosenberg_inp)&!is.na(laid_off))
 ```
 
+We should still check if there is a difference between the group who have filled in the personality survey, and those who haven't.
 
-So especially the number of observations with Rosenberg only missing is very high. These supposedly 74.090 observations of people that have never participated in the personality survey. We will exclude them from the analysis. 
+Notably: proportion of lay-offs is much higher in those that have filled out the survey. 
+
+Potential attrition problem (???)
 
 ```{r}
-df_no_cov <- subset(df_no_cov, !is.na(rosenberg_inp))
-```
 
+table(df_no_cov$laid_off[is.na(df_no_cov$rosenberg_inp) == T])
+table(df_no_cov$laid_off[is.na(df_no_cov$rosenberg_inp) == F])
+```
 ##3.3 Add time variable for survival analysis
 time is 0 for the first year a person responds to the survey and increments by 1 for each subsequent year
 
 ```{r}
-# Ensure the dataframe is sorted by id and year
-df_no_cov <- df_no_cov[order(df_no_cov$id, df_no_cov$year), ]
+
+df_no_cov_nona <- df_no_cov_nona[order(df_no_cov_nona$id, df_no_cov_nona$year), ]
 
 # Create the time variable
-df_no_cov <- transform(df_no_cov, time = year - ave(year, id, FUN = min))
+df_no_cov_nona <- transform(df_no_cov_nona, time = year - ave(year, id, FUN = min))
 ```
 
 ##3.4 Save data and clean
@@ -474,7 +435,7 @@ if (!dir.exists("ProcessedData")) {
 }
 
 # Save the self_esteem dataframe as a CSV file
-write.csv(df_no_cov, file_path, row.names = FALSE)
+write.csv(df_no_cov_nona, file_path, row.names = FALSE)
 
 # Print a message to confirm saving
 print(paste("File saved as", file_path))
@@ -482,114 +443,104 @@ print(paste("File saved as", file_path))
 remove(file_path)
 
 ```
-#4. Exploratory Analysis without Covariates
-##4.1. Simple Tables
+
+#4. Gathering Control Variables
+
+##4.1. From background survey
+Be careful, to avoid an error, all variables have to be converted. 
+And this means that if the orig
 ```{r}
-table(df_no_cov$laid_off_na_corrected, df_no_cov$dum_35_inp)
-table(df_no_cov$laid_off_na_corrected, df_no_cov$dum_40_inp)
-table(df_no_cov$laid_off_na_corrected, df_no_cov$dum_45_inp)
+library(haven)
+# Define the control variables
+control_variables <- c("geslacht", "leeftijd", "partner", "brutoink_f", "oplmet",  "aantalki")
 
-library(ggplot2)
+# Initialize an empty dataframe for the combined results
+control_data_bg <- data.frame()
 
-library(ggplot2)
+# Initialize an empty dataframe for the combined results
+for (year in 2008:2022) {
+    file_name <- paste0("RawData/Background Variables/bg_", year, ".dta")
+    bg_data <- read_dta(file_name)
 
-# Creating the continuous plot with a logistic regression line
-ggplot(data = df_no_cov, aes(x = rosenberg_inp, y = laid_off_na_corrected)) +
-  geom_jitter(width = 0.05, height = 0)+
-  geom_point() +  # Add points
-  geom_smooth(method = "glm", method.args = list(family = "binomial"), se = FALSE) +
-  theme_minimal() +  # Optional: adds a minimalistic theme
-  labs(x = "Rosenberg Score (Imputed)", y = "Laid Off (Corrected)",
-       title = "Relationship between Rosenberg Score and Layoff Status",
-       subtitle = "Logistic Regression Line")
+    # Directly convert labelled variables to numeric
+    bg_data <- bg_data %>%
+        mutate(across(all_of(control_variables), ~ifelse(is.na(.), NA, as.numeric(.))))
+
+    temp_df <- bg_data[, c("nomem_encr", control_variables)]
+    temp_df$year <- year
+
+    control_data_bg <- rbind(control_data_bg, temp_df)
+}
+
+remove(temp_df, bg_data, file_name, control_variables, labelled_vars, year)
 
 ```
 
-##4.2. Kaplan Meier Curves
-Fitting a Kaplan Meier Curve
+
+##4.2. Checking background control variables for outliers and creating dummies
 ```{r}
-library(survival)
-library(survminer)
+#remove all rows if nomenc = NA
+control_data_bg <- control_data_bg[!is.na(control_data_bg$nomem_encr), ]
 
-surv_object <- Surv(time = df_no_cov$time, event = df_no_cov$laid_off_na_corrected)
+#gender
+sum(is.na(control_data_bg$geslacht)) #1
+table(control_data_bg$geslacht) #3 is other, but is only introduced since 2022, so we will have to exclude this from the analysis: 
 
-km_fit <- survfit(surv_object ~ 1)  # '~ 1' indicates no stratification
+#create dummy (female = 1, male = 0)
+control_data_bg$female <- ifelse(control_data_bg$geslacht == 2, 1, ifelse(control_data_bg$geslacht == 1, 0, NA))
 
-ggsurvplot(km_fit, data = df_no_cov, conf.int = TRUE, 
-           title = "Kaplan-Meier Survival Curve",
-           xlab = "Time", ylab = "Survival Probability")
+#age
+sum(is.na(control_data_bg$leeftijd)) #0
+hist(control_data_bg$leeftijd, breaks = 100) 
+sum(control_data_bg$leeftijd < 16) #27096 observations under 16, while that is the minimum age to participate in the survey. These are household members of which parents participate, we will exclude them from the analysis, also since they are to young to work 
+control_data_bg <- control_data_bg[control_data_bg$leeftijd > 15, ]
 
-remove(surv_object, km_fit)
+#CBS uses 74 years old as the maximum age for labour participation calculations. So we will exclude anybody from 75 years or older from the sample -> remember respondents that have stopped working earlier than 74 are already excluded from the laid-off variable 
+sum(control_data_bg$leeftijd > 74) #9334
+control_data_bg <- control_data_bg[control_data_bg$leeftijd < 75, ]
 
+#partner 
+sum(is.na(control_data_bg$partner)) #only 1
+table(control_data_bg$partner) #no further transformations needed
 
-```
+#bruto_ink inputed
+sum(is.na(control_data_bg$brutoink_f)) #9010, so be careful 
+hist(control_data_bg$brutoink_f) #many zero's but no extreme outliers
+sum(control_data_bg$brutoink_f > 4000, na.rm = T) #14119
+sum(control_data_bg$brutoink_f > 20000, na.rm = T) #140 
 
-Splitting the curve by sub-35 dummy: 
-```{r}
-surv_object <- Surv(time = df_no_cov$time, event = df_no_cov$laid_off_na_corrected)
-km_fit_stratified <- survfit(surv_object ~ dum_35_inp, data = df_no_cov)
-ggsurvplot(km_fit_stratified, data = df_no_cov, conf.int = TRUE,
-           palette = c("blue", "red"),   # Optional: specify colors
-           title = "Stratified Kaplan-Meier Survival Curves",
-           xlab = "Time", ylab = "Survival Probability",
-           pval = TRUE)  # Optional: add a p-value for the comparison
+# Sorting brutoink_f in descending order and selecting the top 50 values
+top_50_brutoink_f <- sort(control_data_bg$brutoink_f, decreasing = TRUE)[1:50]
 
-remove(surv_object, km_fit_stratified)
-```
-Sub-40
-```{r}
-surv_object <- Surv(time = df_no_cov$time, event = df_no_cov$laid_off_na_corrected)
-km_fit_stratified <- survfit(surv_object ~ dum_40_inp, data = df_no_cov)
-ggsurvplot(km_fit_stratified, data = df_no_cov, conf.int = TRUE,
-           palette = c("blue", "red"),   # Optional: specify colors
-           title = "Stratified Kaplan-Meier Survival Curves",
-           xlab = "Time", ylab = "Survival Probability",
-           pval = TRUE)  # Optional: add a p-value for the comparison
+# Viewing the top 50 values
+top_50_brutoink_f #the top 10 values are clearly higher than the rest, and especially 1662336 is repeated 7 times, the biggest seems to be a typo. We will remove the top 10 biggest values for brutoink_f 
 
-remove(surv_object, km_fit_stratified)
-```
+control_data_bg <- control_data_bg[control_data_bg$brutoink_f < 552001, ]
+remove(top_50_brutoink_f)
 
-Sub-45
-```{r}
-surv_object <- Surv(time = df_no_cov$time, event = df_no_cov$laid_off_na_corrected)
-km_fit_stratified <- survfit(surv_object ~ dum_45_inp, data = df_no_cov)
-ggsurvplot(km_fit_stratified, data = df_no_cov, conf.int = TRUE,
-           palette = c("blue", "red"),   # Optional: specify colors
-           title = "Stratified Kaplan-Meier Survival Curves",
-           xlab = "Time", ylab = "Survival Probability",
-           pval = TRUE)  # Optional: add a p-value for the comparison
+#Number of Children
+sum(is.na(control_data_bg$aantalki)) #0 
+hist(control_data_bg$aantalki)
 
-remove(surv_object, km_fit_stratified)
-```
+#creating dummy (1= if 1 or more dependent children, 0 = if no depending children): 
+control_data_bg$d.children <- ifelse(control_data_bg$aantalki > 0, 1, 0)
+table(control_data_bg$d.children)
 
-##4.3. Piecewise Constant Model without Covariates
-Intervals are years
+#Education Attained 
+sum(is.na(control_data_bg$oplmet)) #1
+table(control_data_bg$oplmet)
 
-using different dummies:
+#We will include #7 other, #8 (not yet completed any education) and #9 (not yet started any education) in 1 as primary school or less, also since options 8 and 9 are no longer available since december 2008)
 
-```{r}
-library(survival)
-# Fit the models
-# creating yearly intervals
-df_no_cov$time_interval <- cut(df_no_cov$time, breaks = seq(0, max(df_no_cov$time), by = 1), include.lowest = TRUE, right = FALSE)
+control_data_bg$oplmet[control_data_bg$oplmet==7] = 1
+control_data_bg$oplmet[control_data_bg$oplmet==8] = 1
+control_data_bg$oplmet[control_data_bg$oplmet==9] = 1
+table(control_data_bg$oplmet) #succesful 
 
+control_data_bg$oplmet <- as.factor(control_data_bg$oplmet) #as factor variable
 
-m1_sub_35 <- coxph(Surv(time, laid_off_na_corrected) ~ dum_35_inp + strata(time_interval), data = df_no_cov)
-
-summary(m1_sub_35) #interpretation: if m1_sub_35 is equal to 1, this corresponds to a 102% higher risk in getting fired compared to a higher self-esteem. This effect is statistically significantly different from 0. 
-
-
-m1_sub_40 <- coxph(Surv(time, laid_off_na_corrected) ~ dum_40_inp + strata(time_interval), data = df_no_cov)
-
-summary(m1_sub_40)
-
-m1_sub_45 <- coxph(Surv(time, laid_off_na_corrected) ~ dum_45_inp + strata(time_interval), data = df_no_cov)
-
-summary(m1_sub_45)
-
-m1_cont <- coxph(Surv(time, laid_off_na_corrected) ~ rosenberg_inp + strata(time_interval), data = df_no_cov)
-
-summary(m1_cont)
+#Paper uses high education dummy: we assume HBO (5) or WO (6)is high education = 1
+control_data_bg$d.high_edu <- ifelse(control_data_bg$oplmet == 5, 1, ifelse(control_data_bg$oplmet == 6, 1, 0))
 
 ```
 

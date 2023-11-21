@@ -1,0 +1,126 @@
+---
+title: "DataAnalysis"
+author: "Xavier"
+date: "2023-11-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#4. Exploratory Analysis without Covariates
+##4.1. Simple Tables
+```{r}
+table(df_no_cov_nona$laid_off, df_no_cov_nona$dum_35_inp)
+table(df_no_cov_nona$laid_off, df_no_cov_nona$dum_40_inp)
+table(df_no_cov_nona$laid_off, df_no_cov_nona$dum_45_inp)
+
+library(ggplot2)
+
+library(ggplot2)
+
+# Creating the continuous plot with a logistic regression line
+ggplot(data = df_no_cov_nona, aes(x = rosenberg_inp, y = laid_off)) +
+  geom_jitter(width = 0.05, height = 0)+
+  geom_point() +  # Add points
+  geom_smooth(method = "glm", method.args = list(family = "binomial"), se = FALSE) +
+  theme_minimal() +  # Optional: adds a minimalistic theme
+  labs(x = "Rosenberg Score (Imputed)", y = "Laid Off (Corrected)",
+       title = "Relationship between Rosenberg Score and Layoff Status",
+       subtitle = "Logistic Regression Line")
+
+```
+
+##4.2. Kaplan Meier Curves
+Fitting a Kaplan Meier Curve
+```{r}
+library(survival)
+library(survminer)
+
+surv_object <- Surv(time = df_no_cov_nona$time, event = df_no_cov_nona$laid_off)
+
+km_fit <- survfit(surv_object ~ 1)  # '~ 1' indicates no stratification
+
+ggsurvplot(km_fit, data = df_no_cov_nona, conf.int = TRUE, 
+           title = "Kaplan-Meier Survival Curve",
+           xlab = "Time", ylab = "Survival Probability")
+
+remove(surv_object, km_fit)
+
+
+```
+
+Splitting the curve by sub-35 dummy: 
+```{r}
+surv_object <- Surv(time = df_no_cov_nona$time, event = df_no_cov_nona$laid_off)
+km_fit_stratified <- survfit(surv_object ~ dum_35_inp, data = df_no_cov_nona)
+ggsurvplot(km_fit_stratified, data = df_no_cov_nona, conf.int = TRUE,
+           palette = c("blue", "red"),   # Optional: specify colors
+           title = "Stratified Kaplan-Meier Survival Curves",
+           xlab = "Time", ylab = "Survival Probability",
+           pval = TRUE)  # Optional: add a p-value for the comparison
+
+remove(surv_object, km_fit_stratified)
+```
+Sub-40
+```{r}
+surv_object <- Surv(time = df_no_cov_nona$time, event = df_no_cov_nona$laid_off)
+km_fit_stratified <- survfit(surv_object ~ dum_40_inp, data = df_no_cov_nona)
+ggsurvplot(km_fit_stratified, data = df_no_cov_nona, conf.int = TRUE,
+           palette = c("blue", "red"),   # Optional: specify colors
+           title = "Stratified Kaplan-Meier Survival Curves",
+           xlab = "Time", ylab = "Survival Probability",
+           pval = TRUE)  # Optional: add a p-value for the comparison
+
+remove(surv_object, km_fit_stratified)
+```
+
+Sub-45
+```{r}
+surv_object <- Surv(time = df_no_cov_nona$time, event = df_no_cov_nona$laid_off)
+km_fit_stratified <- survfit(surv_object ~ dum_45_inp, data = df_no_cov_nona)
+ggsurvplot(km_fit_stratified, data = df_no_cov_nona, conf.int = TRUE,
+           palette = c("blue", "red"),   # Optional: specify colors
+           title = "Stratified Kaplan-Meier Survival Curves",
+           xlab = "Time", ylab = "Survival Probability",
+           pval = TRUE)  # Optional: add a p-value for the comparison
+
+remove(surv_object, km_fit_stratified)
+```
+
+##4.3. Piecewise Constant Model without Covariates
+Intervals are years
+
+using different dummies:
+
+```{r}
+library(survival)
+
+# Fit the models
+# creating yearly intervals
+df_no_cov_nona$time_interval <- cut(df_no_cov_nona$time, breaks = seq(0, max(df_no_cov_nona$time), by = 1), include.lowest = TRUE, right = FALSE)
+
+
+m1_sub_35 <- coxph(Surv(time, laid_off) ~ dum_35_inp + strata(time_interval), data = df_no_cov_nona)
+
+summary(m1_sub_35) #interpretation: if m1_sub_35 is equal to 1, this corresponds to a  higher risk in getting fired compared to a higher self-esteem. This effect is statistically significantly different from 0. 
+
+
+m1_sub_40 <- coxph(Surv(time, laid_off) ~ dum_40_inp + strata(time_interval), data = df_no_cov_nona)
+
+summary(m1_sub_40)
+
+m1_sub_45 <- coxph(Surv(time, laid_off) ~ dum_45_inp + strata(time_interval), data = df_no_cov_nona)
+
+summary(m1_sub_45)
+
+m1_cont <- coxph(Surv(time, laid_off) ~ rosenberg_inp + strata(time_interval), data = df_no_cov_nona)
+
+summary(m1_cont)
+
+```
+
+
+

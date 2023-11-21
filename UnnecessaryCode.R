@@ -109,3 +109,46 @@ table(self_esteem$dum_45)
 proportions(table(self_esteem$dum_45))
 
 ```
+
+
+#2.3. Lay-offs, NA Corrected
+The above variables creates many na's
+so laid_off_na_corrected corrects if a person has a different job status (e.g. housewife, retirement etc)
+
+??? Is this correct to do -> should be considered
+
+If both are NA, lay-off = 0 
+If t=0 is na, and t = 1 is 0 then lay-off = 1
+If t=0 is na, and t = 1 is 1 then lay-off = 0
+If t=0 is 1, and t=1 is NA then lay-off = 0
+If t=0 is 0, and t=1 is NA then lay-off = 0
+
+```{r}
+# Sort the employment dataframe by id and year
+employment <- employment[order(employment$id, employment$year), ]
+
+# Initialize the laid_off_na_corrected column with 0
+employment$laid_off_na_corrected <- 0
+
+# Loop through the dataframe to set laid_off_na_corrected
+for (i in 1:(nrow(employment) - 1)) {
+    if (employment$id[i] == employment$id[i + 1]) {
+        current_status <- employment$emp_status[i]
+        next_status <- employment$emp_status[i + 1]
+
+        # Check for NA in current and next status
+        if (is.na(current_status) || is.na(next_status)) {
+            if (is.na(current_status) && !is.na(next_status) && next_status == 0) {
+                employment$laid_off_na_corrected[i] <- 1
+            } else {
+                employment$laid_off_na_corrected[i] <- 0
+            }
+        } else {
+            # Apply conditions for non-NA values
+            employment$laid_off_na_corrected[i] <- ifelse(current_status == 1 && next_status == 0, 1, 0)
+        }
+    }
+}
+
+
+```
