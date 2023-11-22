@@ -389,8 +389,6 @@ for (year in 2008:2022) {
 remove(temp_df, bg_data, file_name, control_variables, labelled_vars, year)
 
 ```
-
-
 ##3.2. Checking background control variables for outliers and creating dummies
 ```{r}
 #remove all rows if nomenc = NA
@@ -463,6 +461,96 @@ control_data_bg$d.high_edu <- ifelse(control_data_bg$oplmet == 5, 1, ifelse(cont
 
 ```
 
+##3.3. From Schooling and Working Survey
+We want to get 3 variables: 
+cw*o133 How satisfied are you with your current work?
+cw*o402 [In what sector do you work? / In what sector did you work in your last job
+cw*o404 [What is your current profession? / What profession did you exercise in your last job?]
+
+
+```{r}
+# Mapping years to suffixes
+year_suffixes <- setNames(
+  paste0(
+    formatC(8:22, width = 2, flag = "0"), 
+    letters[1:15]
+  ), 
+  2008:2022
+)
+
+library(dplyr)
+library(haven)
+
+# Initialize an empty dataframe for the combined results
+combined_job_data <- data.frame()
+
+# Loop through each year from 2008 to 2022
+for (year in 2008:2022) {
+    # Construct the file name based on the year
+    file_name <- paste0("RawData/Job/Job_", year, ".dta")
+
+    # Read the data
+    job_data <- read_dta(file_name)
+
+    # Get the corresponding suffix for the year
+    suffix <- year_suffixes[as.character(year)]
+
+    # Construct the variable names based on the year and suffix
+    var_names <- paste0("cw", suffix, c("133", "402", "404"))
+
+    # Select and rename the variables
+    selected_data <- job_data %>%
+        select(nomem_encr, all_of(var_names)) %>%
+        rename(cw133 = var_names[1], cw402 = var_names[2], cw404 = var_names[3])
+
+    # Add the year column
+    selected_data$year <- year
+
+    # Combine with the main dataframe
+    combined_job_data <- rbind(combined_job_data, selected_data)
+}
+
+# View the combined dataframe
+View(combined_job_data)
+
+remove(selected_data, var_names, suffix, file_name, job_data, year_suffixes)
+
+
+
+```
+
+
+##3.4. Checking control job variables 
+```{r}
+#remove all rows if nomenc = NA
+combined_job_data <- combined_job_data[!is.na(combined_job_data$nomem_encr), ]
+
+#job satisfaction 
+table(combined_job_data$cw133)
+#999 is equal to I don't know -> so will change to NA 
+combined_job_data$cw133[combined_job_data$cw133 == 999] <- NA
+sum(is.na(combined_job_data$cw133)) #40.000 so very high number of missing data,could partly be because of not working. 
+
+#sector working 
+table(combined_job_data$cw402)
+sum(is.na(combined_job_data$cw402)) #31.000 might be because of people not working
+
+#category 2 is really small (44), so we will combine them with category 3 industrial production. 
+combined_job_data$cw402[combined_job_data$cw402 == 2] <- 3
+
+#and now we make it a factor, to create dummy variables. 
+combined_job_data$cw402 <- as.factor(combined_job_data$cw402)
+
+#job_type
+sum(is.na(combined_job_data$cw404)) #much lower, only 6000 missing variables
+table(combined_job_data$cw404) #observations are nicely distributed, so no further transformation necessary
+combined_job_data$cw404 <- as.factor(combined_job_data$cw404)
+
+#rename variables 
+combined_job_data <- rename(combined_job_data, id = nomem_encr, job_satisf = cw133, sector = cw402, job_type = cw404)
+
+```
+
 
 
 #4. Matching Covariates and Other Data 
@@ -471,6 +559,7 @@ control_data_bg$d.high_edu <- ifelse(control_data_bg$oplmet == 5, 1, ifelse(cont
 ```{r}
 df_with_na <- merge(employment, self_esteem, by = c("id", "year"), all = TRUE)
 df_with_na <- merge(df_with_na, control_data_bg, by = c("id", "year"), all = TRUE)
+df_with_na <- merge(df_with_na, combined_job_data, by = c('id', "year"), all = TRUE)
 
 ```
 
@@ -548,8 +637,14 @@ na_proportions <- df_no_na %>%
 na_proportions
 remove(na_proportions)
 ```
-##4.5 Save data and clean
+##4.5 Splitting Male and Female Data-Set 
+```{r}
+df_no_na_fem <- subset(df_no_na, female ==1)
+df_no_na_male <- subset(df_no_na, female ==0)
+```
 
+
+##4.5 Save data and clean
 ```{r}
 # Define the file path
 file_path <- "ProcessedData/df_no_na_final.csv"

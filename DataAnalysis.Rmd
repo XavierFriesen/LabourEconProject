@@ -135,10 +135,6 @@ table(df_no_na$female, df_no_na$laid_off)
 ```
 
 ##7.2. Kaplan-Meier Curves 
-```{r}
-df_no_na_fem <- subset(df_no_na, female ==1)
-df_no_na_male <- subset(df_no_na, female ==0)
-```
 
 Using 35 dummy
 ```{r}
@@ -330,5 +326,77 @@ summary(C_sub_45_male)
 remove(C_sub_40_female, C_sub_40_male, C_sub_35_male, C_sub_35_female, C_sub_45_female, C_sub_45_male, test.ph)
 
 #similar results as to Model A and B 
+```
+
+##8.3. Model D: Adding occupations
+```{r}
+D_sub_35_female <- coxph(Surv(time, laid_off) ~ dum_35_inp + d.high_edu + leeftijd + partner + d.children + job_type + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(D_sub_35_female)
+
+test.ph <- cox.zph(D_sub_35_female) #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+D_sub_35_male <- coxph(Surv(time, laid_off) ~ dum_35_inp + d.high_edu + leeftijd + partner + d.children + job_type + strata(year), data = df_no_na_male, robust = TRUE) 
+
+summary(D_sub_35_male) 
+
+test.ph <- cox.zph(D_sub_35_male)  #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+D_sub_40_female <- coxph(Surv(time, laid_off) ~ dum_40_inp + d.high_edu + leeftijd + partner + d.children + job_type + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(D_sub_40_female)
+
+D_sub_40_male <- coxph(Surv(time, laid_off) ~ dum_40_inp + d.high_edu + leeftijd + partner + d.children + job_type + strata(year), data = df_no_na_male, robust = TRUE)
+
+summary(D_sub_40_male)
+
+D_sub_45_female <- coxph(Surv(time, laid_off) ~ dum_45_inp + d.high_edu + leeftijd + partner + d.children + job_type + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(D_sub_45_female)
+
+D_sub_45_male <- coxph(Surv(time, laid_off) ~ dum_45_inp + d.high_edu + leeftijd + partner + d.children + job_type + strata(year), data = df_no_na_male, robust = TRUE)
+
+summary(D_sub_45_male)
+
+remove(D_sub_40_female, D_sub_40_male, D_sub_35_male, D_sub_35_female, D_sub_45_female, D_sub_45_male, test.ph)
+
+#similar results, but job_types is more significant for males. 
+```
+
+##8.4. Model E: Adding Sectors
+```{r}
+E_sub_35_female <- coxph(Surv(time, laid_off) ~ dum_35_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(E_sub_35_female)
+
+test.ph <- cox.zph(E_sub_35_female) #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+E_sub_35_male <- coxph(Surv(time, laid_off) ~ dum_35_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + strata(year), data = df_no_na_male, robust = TRUE) 
+
+summary(E_sub_35_male) 
+
+test.ph <- cox.zph(E_sub_35_male)  #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+E_sub_40_female <- coxph(Surv(time, laid_off) ~ dum_40_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(E_sub_40_female)
+
+E_sub_40_male <- coxph(Surv(time, laid_off) ~ dum_40_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + strata(year), data = df_no_na_male, robust = TRUE)
+
+summary(E_sub_40_male)
+
+E_sub_45_female <- coxph(Surv(time, laid_off) ~ dum_45_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(E_sub_45_female)
+
+E_sub_45_male <- coxph(Surv(time, laid_off) ~ dum_45_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + strata(year), data = df_no_na_male, robust = TRUE)
+
+summary(E_sub_45_male)
+
+remove(E_sub_40_female, E_sub_40_male, E_sub_35_male, E_sub_35_female, E_sub_45_female, E_sub_45_male, test.ph) #weird sector and job_type only matter for males? 
 ```
 
