@@ -519,14 +519,14 @@ Z_sub_35_female <- coxph(Surv(time, laid_off) ~ dum_35_inp + d.high_edu + leefti
 summary(Z_sub_35_female)
 
 test.ph <- cox.zph(Z_sub_35_female) #testing assumptions using Schoenfeld Residuals
-test.ph #valid
+test.ph #invalid job hindrance is strongly correlated
 
 Z_sub_35_male <- coxph(Surv(time, laid_off) ~ dum_35_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + job_hindrance + strata(year), data = df_no_na_male, robust = TRUE) 
 
 summary(Z_sub_35_male) 
 
 test.ph <- cox.zph(Z_sub_35_male)  #testing assumptions using Schoenfeld Residuals
-test.ph #valid
+test.ph #invalid
 
 Z_sub_40_female <- coxph(Surv(time, laid_off) ~ dum_40_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + job_hindrance + strata(year), data = df_no_na_fem, robust = TRUE)
 
@@ -846,3 +846,38 @@ rm(cox_model_factor_male, hr_and_ci_male, conf_int_male, hr_df_male,
 ```
 
 ### Statistically
+
+
+
+
+#Chapter 9: Frailty Models 
+## 9.1. Using Dummy
+Accounting for heterogeneity
+```{r}
+Y_sub_40_female_frailty <- coxph(Surv(time, laid_off) ~ dum_40_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + strata(year) + frailty(id), data = df_no_na_fem)
+
+summary(Y_sub_40_female_frailty)
+library(lmtest)
+AIC(Y_sub_40_female_frailty)
+
+Y_sub_40_male_frailty <- coxph(Surv(time, laid_off) ~ dum_40_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + strata(year) + frailty(id), data = df_no_na_male)
+
+summary(Y_sub_40_male_frailty)
+AIC(Y_sub_40_male_frailty)
+```
+##9.2. Continuous
+```{r}
+Y_cont_female_frailty <- coxph(Surv(time, laid_off) ~ rosenberg_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + strata(year) + frailty(id), data = df_no_na_fem)
+
+summary(Y_cont_female_frailty)
+library(lmtest)
+AIC(Y_cont_female_frailty)
+
+Y_cont_male_frailty <- coxph(Surv(time, laid_off) ~ rosenberg_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + strata(year) + frailty(id), data = df_no_na_male)
+
+summary(Y_cont_male_frailty)
+AIC(Y_cont_male_frailty)
+```
+
+
+

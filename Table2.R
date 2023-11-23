@@ -142,8 +142,6 @@ wald_test_F_fem <- summary(F_sub_40_female)$waldtest
 wald_test_F_fem
 
 F_sub_40_male <- coxph(Surv(time, laid_off) ~ dum_40_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + strata(year), data = df_no_na_male, robust = TRUE)
-
-
 summary(F_sub_40_male)
 cox.zph(F_sub_40_male)
 
@@ -156,6 +154,97 @@ num_parameters_F_male
 wald_test_F_male <- summary(F_sub_40_male)$waldtest
 wald_test_F_male
 
+Y_sub_40_female <- coxph(Surv(time, laid_off) ~ dum_40_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + strata(year), data = df_no_na_fem, robust = TRUE)
+summary(Y_sub_40_female)
+cox.zph(Y_sub_40_female)
+
+log_likelihood_Y_fem <- summary(Y_sub_40_female)$loglik
+log_likelihood_Y_fem 
+deviance_Y_fem <- -2 * (log_likelihood_Y_fem[1] - log_likelihood_Y_fem[2])
+deviance_Y_fem
+num_parameters_Y_fem <- length(coef(Y_sub_40_female)) #parameters
+num_parameters_Y_fem
+wald_test_Y_fem <- summary(Y_sub_40_female)$waldtest
+wald_test_Y_fem
+
+Y_sub_40_male <- coxph(Surv(time, laid_off) ~ dum_40_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + strata(year), data = df_no_na_male, robust = TRUE)
+summary(Y_sub_40_male)
+
+cox.zph(Y_sub_40_female)
+log_likelihood_Y_male <- summary(Y_sub_40_male)$loglik
+log_likelihood_Y_male 
+deviance_Y_male <- -2 * (log_likelihood_Y_male[1] - log_likelihood_Y_male[2])
+deviance_Y_male
+num_parameters_Y_male <- length(coef(Y_sub_40_male)) #parameters
+num_parameters_Y_male
+wald_test_Y_male <- summary(Y_sub_40_male)$waldtest
+wald_test_Y_male
+
+#Use AIC to calculate best model
+# Calculate AIC for each model
+aic_A <- AIC(A_sub_40_female)
+aic_B <- AIC(B_sub_40_female)
+aic_C <- AIC(C_sub_40_female)
+aic_D <- AIC(D_sub_40_female)
+aic_E <- AIC(E_sub_40_female)
+aic_F <- AIC(F_sub_40_female)
+aic_Y <- AIC(Y_sub_40_female)
+
+# Create a named vector to store AIC values for easy comparison
+aic_values <- c(A = aic_A, B = aic_B, C = aic_C, D = aic_D, E = aic_E, F = aic_F, Y = aic_Y)
+
+# Find the model with the lowest AIC
+best_model <- names(aic_values)[which.min(aic_values)]
+
+# Print the AIC values and the best model
+aic_values
+best_model
+
+#check with BIC
+BIC_A <- BIC(A_sub_40_female)
+BIC_B <- BIC(B_sub_40_female)
+BIC_C <- BIC(C_sub_40_female)
+BIC_D <- BIC(D_sub_40_female)
+BIC_E <- BIC(E_sub_40_female)
+BIC_F <- BIC(F_sub_40_female)
+BIC_Y <- BIC(Y_sub_40_female)
+bic_values <- c(A = BIC_A, B = BIC_B, C = BIC_C, D = BIC_D, E = BIC_E, F = BIC_F, Y = BIC_Y)
+best_model <- names(bic_values)[which.min(bic_values)]
+bic_values
+best_model
+
+#Use AIC to calculate best model (Male)
+aic_A <- AIC(A_sub_40_male)
+aic_B <- AIC(B_sub_40_male)
+aic_C <- AIC(C_sub_40_male)
+aic_D <- AIC(D_sub_40_male)
+aic_E <- AIC(E_sub_40_male)
+aic_F <- AIC(F_sub_40_male)
+aic_Y <- AIC(Y_sub_40_male)
+
+aic_values <- c(A = aic_A, B = aic_B, C = aic_C, D = aic_D, E = aic_E, F = aic_F, Y = aic_Y)
+
+# Find the model with the lowest AIC
+best_model <- names(aic_values)[which.min(aic_values)]
+
+# Print the AIC values and the best model
+aic_values
+best_model
+
+#sensitivity check with bic
+BIC_A <- BIC(A_sub_40_male)
+BIC_B <- BIC(B_sub_40_male)
+BIC_C <- BIC(C_sub_40_male)
+BIC_D <- BIC(D_sub_40_male)
+BIC_E <- BIC(E_sub_40_male)
+BIC_F <- BIC(F_sub_40_male)
+BIC_Y <- BIC(Y_sub_40_male)
+bic_values <- c(A = BIC_A, B = BIC_B, C = BIC_C, D = BIC_D, E = BIC_E, F = BIC_F, Y = BIC_Y)
+best_model <- names(bic_values)[which.min(bic_values)]
+bic_values
+best_model
+
+remove("aic_A", "aic_B", "aic_C", "aic_D", "aic_E", "aic_F", "aic_Y", "aic_values")
 rm(list = c(
       'A_sub_40_female', 'log_likelihood_A_fem', 'deviance_A_fem', 'num_parameters_A_fem', 'wald_test_A_fem',
       'A_sub_40_male', 'log_likelihood_A_male', 'deviance_A_male', 'num_parameters_A_male', 'wald_test_A_male',
@@ -168,5 +257,7 @@ rm(list = c(
       'E_sub_40_female', 'log_likelihood_E_fem', 'deviance_E_fem', 'num_parameters_E_fem', 'wald_test_E_fem',
       'E_sub_40_male', 'log_likelihood_E_male', 'deviance_E_male', 'num_parameters_E_male', 'wald_test_E_male',
       'F_sub_40_female', 'log_likelihood_F_fem', 'deviance_F_fem', 'num_parameters_F_fem', 'wald_test_F_fem',
-      'F_sub_40_male', 'log_likelihood_F_male', 'deviance_F_male', 'num_parameters_F_male', 'wald_test_F_male'
+      'F_sub_40_male', 'log_likelihood_F_male', 'deviance_F_male', 'num_parameters_F_male', 'wald_test_F_male',
+      'Y_sub_40_female', 'log_likelihood_Y_fem', 'deviance_Y_fem', 'num_parameters_Y_fem', 'wald_test_Y_fem',
+      'Y_sub_40_male', 'log_likelihood_Y_male', 'deviance_Y_male', 'num_parameters_Y_male', 'wald_test_Y_male'
 ))
