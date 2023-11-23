@@ -253,7 +253,45 @@ remove(A_sub_40_female, A_sub_40_male, A_sub_35_male, A_sub_35_female, A_sub_45_
 ```
 
 #8. Adding other covariates to piecewise regression 
-##8.1 Model B, education and age
+##8.1 Testing for correlation between covariates and self-esteem
+
+Female:
+```{r}
+# Select only numeric and binary (dummy) variables
+numeric_and_dummy_data <- df_no_na_fem[sapply(df_no_na_fem, function(x) is.numeric(x) || all(x %in% c(0, 1)))]
+
+# Calculate correlations
+correlation_matrix <- cor(numeric_and_dummy_data, use = "complete.obs")
+
+correlation_data <- as.data.frame(as.table(correlation_matrix))
+
+# Filter for absolute correlations greater than 0.6, excluding self-correlations
+high_correlations <- subset(correlation_data, abs(Freq) > 0.6 & Var1 != Var2)
+
+# View the result
+high_correlations #there are no problematic correlations in the female dataset, only logically aantalki (number of children) and d.children (dummy if somebody has at least one child should not be included in the same model)
+
+remove(high_correlations, correlation_data, correlation_matrix, numeric_and_dummy_data)
+```
+Male:
+```{r}
+numeric_and_dummy_data <- df_no_na_male[sapply(df_no_na_fem, function(x) is.numeric(x) || all(x %in% c(0, 1)))]
+
+# Calculate correlations
+correlation_matrix <- cor(numeric_and_dummy_data, use = "complete.obs")
+
+correlation_data <- as.data.frame(as.table(correlation_matrix))
+
+# Filter for absolute correlations greater than 0.6, excluding self-correlations
+high_correlations <- subset(correlation_data, abs(Freq) > 0.6 & Var1 != Var2)
+
+# View the result
+high_correlations #there are no problematic correlations in the female dataset, only logically aantalki (number of children) and d.children (dummy if somebody has at least one child should not be included in the same model)
+
+remove(high_correlations, correlation_data, correlation_matrix, numeric_and_dummy_data)
+```
+
+##8.2 Model B, education and age
 ```{r}
 B_sub_35_female <- coxph(Surv(time, laid_off) ~ dum_35_inp + d.high_edu + leeftijd + strata(year), data = df_no_na_fem, robust = TRUE)
 
@@ -291,7 +329,7 @@ remove(B_sub_40_female, B_sub_40_male, B_sub_35_male, B_sub_35_female, B_sub_45_
 
 ```
 
-##8.2. Model C: Adding children and partner 
+##8.3. Model C: Adding children and partner 
 ```{r}
 C_sub_35_female <- coxph(Surv(time, laid_off) ~ dum_35_inp + d.high_edu + leeftijd + partner + d.children + strata(year), data = df_no_na_fem, robust = TRUE)
 
@@ -328,7 +366,7 @@ remove(C_sub_40_female, C_sub_40_male, C_sub_35_male, C_sub_35_female, C_sub_45_
 #similar results as to Model A and B 
 ```
 
-##8.3. Model D: Adding occupations
+##8.4. Model D: Adding occupations
 ```{r}
 D_sub_35_female <- coxph(Surv(time, laid_off) ~ dum_35_inp + d.high_edu + leeftijd + partner + d.children + job_type + strata(year), data = df_no_na_fem, robust = TRUE)
 
@@ -365,7 +403,7 @@ remove(D_sub_40_female, D_sub_40_male, D_sub_35_male, D_sub_35_female, D_sub_45_
 #similar results, but job_types is more significant for males. 
 ```
 
-##8.4. Model E: Adding Sectors
+##8.5. Model E: Adding Sectors
 ```{r}
 E_sub_35_female <- coxph(Surv(time, laid_off) ~ dum_35_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + strata(year), data = df_no_na_fem, robust = TRUE)
 
@@ -400,3 +438,411 @@ summary(E_sub_45_male)
 remove(E_sub_40_female, E_sub_40_male, E_sub_35_male, E_sub_35_female, E_sub_45_female, E_sub_45_male, test.ph) #weird sector and job_type only matter for males? 
 ```
 
+##8.6. Model F: Adding Health
+
+```{r}
+F_sub_35_female <- coxph(Surv(time, laid_off) ~ dum_35_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(F_sub_35_female)
+
+test.ph <- cox.zph(F_sub_35_female) #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+F_sub_35_male <- coxph(Surv(time, laid_off) ~ dum_35_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + strata(year), data = df_no_na_male, robust = TRUE) 
+
+summary(F_sub_35_male) 
+
+test.ph <- cox.zph(F_sub_35_male)  #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+F_sub_40_female <- coxph(Surv(time, laid_off) ~ dum_40_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(F_sub_40_female)
+
+F_sub_40_male <- coxph(Surv(time, laid_off) ~ dum_40_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + strata(year), data = df_no_na_male, robust = TRUE)
+
+summary(F_sub_40_male)
+
+F_sub_45_female <- coxph(Surv(time, laid_off) ~ dum_45_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(F_sub_45_female)
+
+F_sub_45_male <- coxph(Surv(time, laid_off) ~ dum_45_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + strata(year), data = df_no_na_male, robust = TRUE)
+
+summary(F_sub_45_male)
+
+remove(F_sub_40_female, F_sub_40_male, F_sub_35_male, F_sub_35_female, F_sub_45_female, F_sub_45_male, test.ph) 
+```
+
+
+
+##8.Y. Adding extra dummy for job_satisfaction 
+```{r}
+Y_sub_35_female <- coxph(Surv(time, laid_off) ~ dum_35_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(Y_sub_35_female)
+
+test.ph <- cox.zph(Y_sub_35_female) #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+Y_sub_35_male <- coxph(Surv(time, laid_off) ~ dum_35_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + strata(year), data = df_no_na_male, robust = TRUE) 
+
+summary(Y_sub_35_male) 
+
+test.ph <- cox.zph(Y_sub_35_male)  #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+Y_sub_40_female <- coxph(Surv(time, laid_off) ~ dum_40_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(Y_sub_40_female)
+
+Y_sub_40_male <- coxph(Surv(time, laid_off) ~ dum_40_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + strata(year), data = df_no_na_male, robust = TRUE)
+
+summary(Y_sub_40_male)
+
+Y_sub_45_female <- coxph(Surv(time, laid_off) ~ dum_45_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(Y_sub_45_female)
+
+Y_sub_45_male <- coxph(Surv(time, laid_off) ~ dum_45_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + strata(year), data = df_no_na_male, robust = TRUE)
+
+summary(Y_sub_45_male)
+
+remove(Y_sub_40_female, Y_sub_40_male, Y_sub_35_male, Y_sub_35_female, Y_sub_45_female, Y_sub_45_male, test.ph) 
+```
+
+
+##8.Z. Adding Extra dummy for job-hindrance 
+```{r}
+Z_sub_35_female <- coxph(Surv(time, laid_off) ~ dum_35_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + job_hindrance + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(Z_sub_35_female)
+
+test.ph <- cox.zph(Z_sub_35_female) #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+Z_sub_35_male <- coxph(Surv(time, laid_off) ~ dum_35_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + job_hindrance + strata(year), data = df_no_na_male, robust = TRUE) 
+
+summary(Z_sub_35_male) 
+
+test.ph <- cox.zph(Z_sub_35_male)  #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+Z_sub_40_female <- coxph(Surv(time, laid_off) ~ dum_40_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + job_hindrance + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(Z_sub_40_female)
+
+Z_sub_40_male <- coxph(Surv(time, laid_off) ~ dum_40_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + job_hindrance + strata(year), data = df_no_na_male, robust = TRUE)
+
+summary(Z_sub_40_male)
+
+Z_sub_45_female <- coxph(Surv(time, laid_off) ~ dum_45_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + job_hindrance + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(Z_sub_45_female)
+
+Z_sub_45_male <- coxph(Surv(time, laid_off) ~ dum_45_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + job_hindrance + strata(year), data = df_no_na_male, robust = TRUE)
+
+summary(Z_sub_45_male)
+
+remove(Z_sub_40_female, Z_sub_40_male, Z_sub_35_male, Z_sub_35_female, Z_sub_45_female, Z_sub_45_male, test.ph) 
+```
+
+#9. Using Continuous Rosenberg Scale: Lineair and Non-Lineair 
+##9.1. Linear modelds
+```{r}
+A_cont_lin_female <- coxph(Surv(time, laid_off) ~ rosenberg_inp + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(A_cont_lin_female)
+
+A_cont_lin_male <- coxph(Surv(time, laid_off) ~ rosenberg_inp + strata(year), data = df_no_na_male, robust = TRUE)
+
+summary(A_cont_lin_male)
+
+B_cont_lin_female <- coxph(Surv(time, laid_off) ~ rosenberg_inp + d.high_edu + leeftijd + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(B_cont_lin_female)
+
+test.ph <- cox.zph(B_cont_lin_female) #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+B_cont_lin_male <- coxph(Surv(time, laid_off) ~ rosenberg_inp + d.high_edu + leeftijd + strata(year), data = df_no_na_male, robust = TRUE) 
+
+summary(B_cont_lin_male)
+
+C_cont_lin_female <- coxph(Surv(time, laid_off) ~ rosenberg_inp + d.high_edu + leeftijd + partner + d.children + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(C_cont_lin_female)
+
+test.ph <- cox.zph(C_cont_lin_female) #testing assumptions using Schoenfeld Residuals
+test.ph #Be careful Partner is statistically significant (!!!)
+
+C_cont_lin_male <- coxph(Surv(time, laid_off) ~ rosenberg_inp + d.high_edu + leeftijd + partner + d.children + strata(year), data = df_no_na_male, robust = TRUE) 
+
+summary(C_cont_lin_male) 
+
+test.ph <- cox.zph(C_cont_lin_male)  #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+
+D_cont_lin_female <- coxph(Surv(time, laid_off) ~ rosenberg_inp + d.high_edu + leeftijd + partner + d.children + job_type + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(D_cont_lin_female)
+
+test.ph <- cox.zph(D_cont_lin_female) #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+D_cont_lin_male <- coxph(Surv(time, laid_off) ~ rosenberg_inp + d.high_edu + leeftijd + partner + d.children + job_type + strata(year), data = df_no_na_male, robust = TRUE) 
+
+summary(D_cont_lin_male) 
+
+test.ph <- cox.zph(D_cont_lin_male)  #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+E_cont_lin_female <- coxph(Surv(time, laid_off) ~ rosenberg_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(E_cont_lin_female)
+
+test.ph <- cox.zph(E_cont_lin_female) #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+E_cont_lin_male <- coxph(Surv(time, laid_off) ~ rosenberg_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + strata(year), data = df_no_na_male, robust = TRUE) 
+
+summary(E_cont_lin_male) 
+
+test.ph <- cox.zph(E_cont_lin_male)  #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+F_cont_lin_female <- coxph(Surv(time, laid_off) ~ rosenberg_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(F_cont_lin_female)
+
+test.ph <- cox.zph(F_cont_lin_female) #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+F_cont_lin_male <- coxph(Surv(time, laid_off) ~ rosenberg_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + strata(year), data = df_no_na_male, robust = TRUE) 
+
+summary(F_cont_lin_male) 
+
+test.ph <- cox.zph(F_cont_lin_male)  #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+Y_cont_lin_female <- coxph(Surv(time, laid_off) ~ rosenberg_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(Y_cont_lin_female)
+
+test.ph <- cox.zph(Y_cont_lin_female) #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+Y_cont_lin_male <- coxph(Surv(time, laid_off) ~ rosenberg_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + strata(year), data = df_no_na_male, robust = TRUE) 
+
+summary(Y_cont_lin_male) 
+
+test.ph <- cox.zph(Y_cont_lin_male)  #testing assumptions using Schoenfeld Residuals
+test.ph #valid
+
+Z_cont_lin_female <- coxph(Surv(time, laid_off) ~ rosenberg_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + job_hindrance + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(Z_cont_lin_female)
+
+test.ph <- cox.zph(Z_cont_lin_female) #testing assumptions using Schoenfeld Residuals
+test.ph #invalid job_hindrance correlates 
+
+Z_cont_lin_male <- coxph(Surv(time, laid_off) ~ rosenberg_inp + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + job_hindrance + strata(year), data = df_no_na_male, robust = TRUE) 
+
+summary(Z_cont_lin_male) 
+
+test.ph <- cox.zph(Z_cont_lin_male)  #testing assumptions using Schoenfeld Residuals
+test.ph #
+
+remove(test.ph, A_cont_lin_male, B_cont_lin_male, C_cont_lin_male, D_cont_lin_male, E_cont_lin_male, F_cont_lin_male, Y_cont_lin_male, Z_cont_lin_male,
+       A_cont_lin_female, B_cont_lin_female, C_cont_lin_female, D_cont_lin_female, E_cont_lin_female, F_cont_lin_female, Y_cont_lin_female, Z_cont_lin_female)
+```
+
+##9.2. Checking non-linearity
+###Graphically 
+```{r}
+library(survival)
+library(survival)
+
+# Linear model
+A_cont_lin_female <- coxph(Surv(time, laid_off) ~ rosenberg_inp + strata(year), data = df_no_na_fem, robust = TRUE)
+
+# Non-linear model (using restricted cubic splines for illustration)
+A_cont_nonlin_female <- coxph(Surv(time, laid_off) ~ rcs(rosenberg_inp, 3) + strata(year), data = df_no_na_fem, robust = TRUE)
+
+# Create a new data frame for predictions
+rosenberg_range <- data.frame(rosenberg_inp = seq(min(df_no_na_fem$rosenberg_inp, na.rm = TRUE), 
+                                                  max(df_no_na_fem$rosenberg_inp, na.rm = TRUE), 
+                                                  length.out = 100))
+
+# Predict survival probabilities
+surv_pred_lin <- survfit(A_cont_lin_female, newdata = rosenberg_range)
+surv_pred_nonlin <- survfit(A_cont_nonlin_female, newdata = rosenberg_range)
+
+# Extract survival probabilities and time points
+surv_pred_lin_df <- data.frame(
+  rosenberg_inp = rep(rosenberg_range$rosenberg_inp, each = length(surv_pred_lin$time)),
+  surv = rep(surv_pred_lin$surv, times = length(rosenberg_range$rosenberg_inp))
+)
+
+surv_pred_nonlin_df <- data.frame(
+  rosenberg_inp = rep(rosenberg_range$rosenberg_inp, each = length(surv_pred_nonlin$time)),
+  surv = rep(surv_pred_nonlin$surv, times = length(rosenberg_range$rosenberg_inp))
+)
+
+library(ggplot2)
+
+# Plotting
+ggplot() +
+  geom_line(data = surv_pred_lin_df, aes(x = rosenberg_inp, y = surv), colour = "blue") +
+  geom_line(data = surv_pred_nonlin_df, aes(x = rosenberg_inp, y = surv), colour = "red") +
+  labs(x = "Rosenberg Self-Esteem Score", y = "Survival Probability") +
+  ggtitle("Predicted Survival Probabilities") +
+  theme_minimal()
+
+
+
+
+
+remove(surv_pred_lin_df, surv_pred_nonlin_df, rosenberg_range, A_cont_lin_female, A_cont_nonlin_female)
+```
+
+```{r}
+library(survival)
+cox_model_factor <- coxph(Surv(time, laid_off) ~ rosenberg_factor + strata(year), data = df_no_na, robust = TRUE)
+
+summary(cox_model_factor)
+
+
+# Calculate hazard ratios and their 95% CI
+hr_and_ci <- exp(coef(cox_model_factor))
+conf_int <- exp(confint(cox_model_factor))
+
+# Create a data frame for the hazard ratios and confidence intervals
+hr_df <- data.frame(
+  Variable = names(hr_and_ci),
+  HR = hr_and_ci,
+  Lower = conf_int[, "2.5 %"],
+  Upper = conf_int[, "97.5 %"]
+)
+
+library(ggplot2)
+
+# Plotting hazard ratios with confidence intervals
+ggplot(hr_df, aes(x = Variable, y = HR)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = Lower, ymax = Upper), width = 0.2) +
+  scale_y_continuous(trans = 'log', name = "Hazard Ratio (log scale)") +
+  labs(x = "Variable", title = "Hazard Ratios with Confidence Intervals") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  geom_smooth()
+remove(cox_model_factor, hr_df, hr_simplified_df, hr_simplified, hr_and_ci, conf_int)
+```
+
+And do the same for the full model: 
+```{r}
+
+cox_model_factor <- coxph(Surv(time, laid_off) ~ rosenberg_factor + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + strata(year), data = df_no_na, robust = TRUE)
+
+summary(cox_model_factor)
+
+# Calculate hazard ratios and their 95% CI
+hr_and_ci <- exp(coef(cox_model_factor))
+conf_int <- exp(confint(cox_model_factor))
+
+# Create a data frame for the hazard ratios and confidence intervals
+hr_df <- data.frame(
+  Variable = names(hr_and_ci),
+  HR = hr_and_ci,
+  Lower = conf_int[, "2.5 %"],
+  Upper = conf_int[, "97.5 %"]
+)
+
+# Filter the data frame to include only variables related to Rosenberg
+hr_df <- hr_df[grep("rosenberg_factor", hr_df$Variable), ]
+
+
+library(ggplot2)
+
+# Plotting hazard ratios with confidence intervals
+ggplot(hr_df, aes(x = Variable, y = HR)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = Lower, ymax = Upper), width = 0.2) +
+  scale_y_continuous(trans = 'log', name = "Hazard Ratio (log scale)") +
+  labs(x = "Variable", title = "Hazard Ratios with Confidence Intervals") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  geom_smooth()
+remove(cox_model_factor, hr_df, hr_and_ci, conf_int)
+
+```
+
+And now splitted for male and female: 
+
+
+```{r}
+# Cox model for males
+cox_model_factor_male <- coxph(Surv(time, laid_off) ~ rosenberg_factor + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + strata(year), data = df_no_na_male, robust = TRUE)
+
+summary(cox_model_factor_male)
+# Hazard ratios and CI for males
+hr_and_ci_male <- exp(coef(cox_model_factor_male))
+conf_int_male <- exp(confint(cox_model_factor_male))
+
+# Data frame for males
+hr_df_male <- data.frame(
+  Variable = names(hr_and_ci_male),
+  HR = hr_and_ci_male,
+  Lower = conf_int_male[, "2.5 %"],
+  Upper = conf_int_male[, "97.5 %"],
+  Gender = "Male"
+)
+
+# Filter for Rosenberg factors
+hr_df_male <- hr_df_male[grep("rosenberg_factor", hr_df_male$Variable), ]
+
+# Cox model for females
+cox_model_factor_female <- coxph(Surv(time, laid_off) ~ rosenberg_factor + d.high_edu + leeftijd + partner + d.children + job_type + sector + d.mental_health + d.heavy_alcohol + job_satisf + strata(year), data = df_no_na_fem, robust = TRUE)
+
+summary(cox_model_factor_female)
+
+# Hazard ratios and CI for females
+hr_and_ci_female <- exp(coef(cox_model_factor_female))
+conf_int_female <- exp(confint(cox_model_factor_female))
+
+# Data frame for females
+hr_df_female <- data.frame(
+  Variable = names(hr_and_ci_female),
+  HR = hr_and_ci_female,
+  Lower = conf_int_female[, "2.5 %"],
+  Upper = conf_int_female[, "97.5 %"],
+  Gender = "Female"
+)
+
+# Filter for Rosenberg factors
+hr_df_female <- hr_df_female[grep("rosenberg_factor", hr_df_female$Variable), ]
+
+# Combine male and female data frames
+hr_df_combined <- rbind(hr_df_male, hr_df_female)
+
+# Plotting
+ggplot(hr_df_combined, aes(x = Variable, y = HR, color = Gender)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = Lower, ymax = Upper), width = 0.2) +
+  scale_color_manual(values = c("Male" = "blue", "Female" = "red")) +
+  scale_y_continuous(trans = 'log', name = "Hazard Ratio (log scale)") +
+  labs(x = "Rosenberg Score Group", title = "Hazard Ratios by Gender") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  geom_smooth(se = FALSE, method = "loess")
+
+# Remove temporary variables
+rm(cox_model_factor_male, hr_and_ci_male, conf_int_male, hr_df_male,
+   cox_model_factor_female, hr_and_ci_female, conf_int_female, hr_df_female,
+   hr_df_combined)
+
+
+```
+
+### Statistically

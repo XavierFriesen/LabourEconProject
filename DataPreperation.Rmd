@@ -260,7 +260,7 @@ remove(temp_df, personality_data, file_name, suffix, suffixes, temp_neg, temp_po
 ```
 
 #2. Lay-off Dummies
-#2.1. Designing dummy for working vs. not working: 
+##2.1. Designing dummy for working vs. not working: 
 
 Using criteria of Van der Meer & Wielers (2016): 
 
@@ -551,6 +551,123 @@ combined_job_data <- rename(combined_job_data, id = nomem_encr, job_satisf = cw1
 
 ```
 
+##3.5. Loading Health Variables 
+
+```{r}
+library(dplyr)
+library(haven)
+
+library(dplyr)
+library(haven)
+
+# Initialize an empty dataframe for the combined results
+health <- data.frame()
+
+# Define a vector with the years, excluding 2014
+years <- setdiff(2008:2022, 2014)
+
+# Loop through each year
+for (year in years) {
+    # Construct the file name based on the year
+    file_name <- paste0("RawData/Health/Health_", year, ".dta")
+
+    # Read the data
+    health_data <- read_dta(file_name)
+
+    # Construct the variable names based on the year
+    # Starting with 'b' for 2008, incrementing each year, and skipping 'i' for 2014
+    suffix_letter <- letters[(year - 2008) + 2 - ifelse(year > 2014, 1, 0)]
+    year_suffix <- paste0(formatC(year - 2000, width = 2, flag = "0"), suffix_letter)  # e.g., "08b" for 2008
+
+    var_names <- paste0("ch", year_suffix, c("014", "011", "133", "022"))
+
+    # Select and rename the variables
+    selected_data <- health_data %>%
+        select(nomem_encr, all_of(var_names)) %>%
+        rename(depressed = var_names[1], anxious = var_names[2], alcohol_consumption = var_names[3], health_hindrance = var_names[4])
+
+    # Add the year column
+    selected_data$year <- year
+
+    # Combine with the main dataframe
+    health <- rbind(health, selected_data)
+}
+
+rm(file_name, year_suffix, var_names, selected_data, health_data)
+
+# View the combined dataframe
+View(health)
+```
+
+
+##3.6. Editing Health Variable and Creating Dummies: 
+Remember, there is no health data for 2014, we will correct for that after calculatign the dummies. 
+
+```{r}
+#creating dummy for health problems due to mental health: 1 if either ch07a011 (anxiety) is 4 or higher (often or more) or if ch*014 (depression) is 4 or higher (often or more)
+sum(is.na(health$depressed))  #127
+sum(is.na(health$anxious))   #127
+table(health$depressed)
+table(health$anxious)
+
+health$d.mental_health <- ifelse(health$depressed > 3, 1, ifelse(health$anxious > 3, 1, 0))
+table(health$d.mental_health)
+
+#creating dummy for heavy alcohol consumption
+sum(is.na(health$alcohol_consumption)) #249 
+table(health$alcohol_consumption)
+
+#1 if 1 or 2 (drinking five or more times a week), #0 othrewise
+health$d.heavy_alcohol <- ifelse(health$alcohol_consumption < 3, 1, 0)
+table(health$d.heavy_alcohol)
+
+#creating dummy for general health hindrance
+sum(is.na(health$health_hindrance))
+table(health$health_hindrance)
+
+#1 if 4 or 5 (4 quite a lot, 5 very much) 0 otherwise
+health$job_hindrance <- ifelse(health$health_hindrance > 3, 1, 0)
+table(health$job_hindrance)
+
+health <- health %>% rename(id = nomem_encr) %>% select(-alcohol_consumption, -depressed, -anxious, -health_hindrance)
+
+```
+There was no survey in 2014, thus, these variables are systemetically missing. 
+We will be using a last observation carried forward approach for all participants who already participated in 2013 to inpute values for that year. 
+
+```{r}
+library(dplyr)
+library(zoo)
+
+# Ensuring the health dataframe is sorted by id and year
+health <- health %>% arrange(id, year)
+
+# Carrying forward the last observation for each individual
+health <- health %>% 
+  group_by(id) %>% 
+  mutate(
+    d.mental_health = na.locf(d.mental_health, na.rm = FALSE),
+    d.heavy_alcohol = na.locf(d.heavy_alcohol, na.rm = FALSE),
+    job_hindrance = na.locf(job_hindrance, na.rm = FALSE)
+  ) %>%
+  ungroup()
+
+# Create new 2014 records for individuals with data up to 2013
+ids_with_2013 <- health %>% filter(year == 2013) %>% pull(id) %>% unique()
+
+new_2014_records <- health %>% 
+  filter(id %in% ids_with_2013, year == 2013) %>% 
+  mutate(year = 2014)
+
+# Append the new 2014 records to the health dataframe
+health <- rbind(health, new_2014_records)
+
+# Check the result
+table(health$year)
+
+remove(ids_with_2013, new_2014_records)
+
+```
 
 
 #4. Matching Covariates and Other Data 
@@ -560,6 +677,7 @@ combined_job_data <- rename(combined_job_data, id = nomem_encr, job_satisf = cw1
 df_with_na <- merge(employment, self_esteem, by = c("id", "year"), all = TRUE)
 df_with_na <- merge(df_with_na, control_data_bg, by = c("id", "year"), all = TRUE)
 df_with_na <- merge(df_with_na, combined_job_data, by = c('id', "year"), all = TRUE)
+df_with_na <- merge(df_with_na, health, by = c('id', "year"), all = TRUE)
 
 ```
 
@@ -620,6 +738,15 @@ df_with_na <- df_with_na[order(df_with_na$id, df_with_na$year), ]
 
 # Create the time variable
 df_with_na <- transform(df_with_na, time = year - ave(year, id, FUN = min))
+
+#creating factor variable for Rosenberg 
+df_no_na$rosenberg_factor <- cut(df_no_na$rosenberg_inp, 
+                                      breaks = c(10, 20, 30, 40, 55, 60, 70),   include.lowest = TRUE, labels = c("10-20", "21-30", "31-40", "41-50", "51-60", "61-70"))
+
+df_no_na$rosenberg_factor<- relevel(df_no_na$rosenberg_factor, ref = "61-70")
+
+# Check the new variable
+table(df_no_na$rosenberg_factor)
 ```
 
 ##4.4. Checking missing covariates: 
