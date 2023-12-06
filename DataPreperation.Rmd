@@ -221,6 +221,8 @@ Indeed much lower now, only if there is no previous data, for example because th
 ```{r}
 #dummy, coded 0 as below or equal to 35 (low SE) or 1 as higher than 35
 #or 0 if below or equal to 45 etc.
+self_esteem$dum_20_inp <- ifelse(self_esteem$rosenberg_inp <= 20, 0, 1)
+self_esteem$dum_25_inp <- ifelse(self_esteem$rosenberg_inp <= 25, 0, 1)
 self_esteem$dum_35_inp <- ifelse(self_esteem$rosenberg_inp <= 35, 0, 1)
 self_esteem$dum_40_inp <- ifelse(self_esteem$rosenberg_inp <= 40, 0, 1)
 self_esteem$dum_45_inp <- ifelse(self_esteem$rosenberg_inp <= 45, 0, 1)
@@ -725,6 +727,12 @@ Potential attrition problem (???), further research is required
 table(df_with_na$laid_off[is.na(df_with_na$rosenberg_inp) == T])
 table(df_with_na$laid_off[is.na(df_with_na$rosenberg_inp) == F])
 ```
+##4.3. Creating factor variable based on which data is available for use of attrition analysis
+
+if 1 = only data on rosenberg_inp and lay-off
+if 2 = 1 + 
+
+
 ##4.3 Add time variable for survival analysis
 time is 0 for the first year a person responds to the survey and increments by 1 for each subsequent year
 

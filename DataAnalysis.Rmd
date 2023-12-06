@@ -11,6 +11,27 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 #6. Exploratory Analysis without Covariates
+##6.0. distribution of Rosenberg and Laid-off scores
+```{r}
+hist(df_no_na$rosenberg[df_no_na$laid_off == 1], breaks = 60, 
+     xlab = "Score on Rosenberg Scale", 
+     ylab = "Number of Lay-Offs", 
+     xlim = c(10,70),
+     main = "")
+
+hist(df_no_na_fem$rosenberg[df_no_na$laid_off == 1], breaks = 60, 
+     xlab = "Score on Rosenberg Scale", 
+     ylab = "Number of Lay-Offs", 
+     xlim = c(10,70),
+     main = "Female")
+
+hist(df_no_na_male$rosenberg[df_no_na$laid_off == 1], breaks = 60, 
+     xlab = "Score on Rosenberg Scale", 
+     ylab = "Number of Lay-Offs", 
+     xlim = c(10,70),
+     main = "Male")
+```
+
 ##6.1. Simple Tables
 ```{r}
 table(df_no_na$laid_off, df_no_na$dum_35_inp)
@@ -71,8 +92,27 @@ km_fit_stratified <- survfit(surv_object ~ dum_40_inp, data = df_no_na)
 ggsurvplot(km_fit_stratified, data = df_no_na, conf.int = TRUE,
            palette = c("blue", "red"),   # Optional: specify colors
            title = "Stratified Kaplan-Meier Survival Curves",
-           xlab = "Time", ylab = "Survival Probability",
+           xlab = "Years", ylab = "Survival Probability",
            pval = TRUE)  # Optional: add a p-value for the comparison
+
+surv_object <- Surv(time = df_no_na_fem$time, event = df_no_na_fem$laid_off)
+km_fit_stratified <- survfit(surv_object ~ dum_40_inp, data = df_no_na_fem)
+ggsurvplot(km_fit_stratified, data = df_no_na_fem, conf.int = TRUE,
+           palette = c("grey", "black"),   # Optional: specify colors
+           title = "Female",
+           xlab = "Years", ylab = "Survival Probablity",
+           legend.labs = c("Low Self-Esteem", "High Self-Esteem"),
+           pval = TRUE)  # Optional: add a p-value for the comparison
+
+surv_object <- Surv(time = df_no_na_male$time, event = df_no_na_male$laid_off)
+km_fit_stratified <- survfit(surv_object ~ dum_40_inp, data = df_no_na_male)
+ggsurvplot(km_fit_stratified, data = df_no_na_male, conf.int = TRUE,
+           palette = c("grey", "black"),   # Optional: specify colors
+           title = "Male",
+           xlab = "Years", ylab = "Survival Probablity",
+           legend.labs = c("Low Self-Esteem", "High Self-Esteem"),
+           pval = TRUE)  # Optional: add a p-value for the comparison
+
 
 remove(surv_object, km_fit_stratified)
 ```
@@ -846,8 +886,6 @@ rm(cox_model_factor_male, hr_and_ci_male, conf_int_male, hr_df_male,
 ```
 
 ### Statistically
-
-
 
 
 #Chapter 9: Frailty Models 

@@ -245,6 +245,7 @@ bic_values
 best_model
 
 remove("aic_A", "aic_B", "aic_C", "aic_D", "aic_E", "aic_F", "aic_Y", "aic_values")
+remove("BIC_A", "BIC_B", "BIC_C", "BIC_D", "BIC_E", "BIC_F", "BIC_Y", "BIC_values", best_model)
 rm(list = c(
       'A_sub_40_female', 'log_likelihood_A_fem', 'deviance_A_fem', 'num_parameters_A_fem', 'wald_test_A_fem',
       'A_sub_40_male', 'log_likelihood_A_male', 'deviance_A_male', 'num_parameters_A_male', 'wald_test_A_male',
