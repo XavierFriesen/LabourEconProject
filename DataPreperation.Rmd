@@ -729,9 +729,10 @@ table(df_with_na$laid_off[is.na(df_with_na$rosenberg_inp) == F])
 ```
 ##4.3. Creating factor variable based on which data is available for use of attrition analysis
 
-if 1 = only data on rosenberg_inp and lay-off
-if 2 = 1 + 
-
+```{r}
+df_with_na <- df_with_na %>%
+  mutate(attrition = ifelse(is.na(rosenberg_inp), 0, 1))
+```
 
 ##4.3 Add time variable for survival analysis
 time is 0 for the first year a person responds to the survey and increments by 1 for each subsequent year
