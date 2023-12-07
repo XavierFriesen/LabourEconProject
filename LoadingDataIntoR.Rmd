@@ -5,6 +5,11 @@ date: "2023-11-21"
 output: html_document
 ---
 
+# Loading packages
+```{r}
+library(haven)
+```
+
 #2. Lay-off Dummies
 #2.1. Designing dummy for working vs. not working: 
 
